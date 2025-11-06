@@ -15,7 +15,12 @@ LiliumFS is a small, fast HTTP file server, easy to config and just one click to
 *TODO: Add zip function*
 # How to use
 Download the lasted release, extract to a folder and run the executable.
-The page can be access at `http:localhost:{config.port}`, and the admin panel can be found at `http:localhost:{config.port}/__/admin`
+
+The page can be access at `http://localhost:{config.port}`,
+
+and the admin panel can be found at `http://localhost:{config.port}/__/admin`.
+
+On `localhost` there is no authentication required for the admin panel, but if you access it via machine IP and plan to set it up for outside use, consider creating one admin account via the `localhost` admin panel, the first created account will be an admin by default.
 # Config
 All config is in config.json file in the same app directory. the structure of this config is:
 ```
