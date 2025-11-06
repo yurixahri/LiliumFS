@@ -15,6 +15,7 @@ LiliumFS is a small, fast HTTP file server, easy to config and just one click to
 *TODO: Add zip function*
 # How to use
 Download the lasted release, extract to a folder and run the executable.
+The page can be access at `http:localhost:{config.port}`, and the admin panel can be found at `http:localhost:{config.port}/__/admin`
 # Config
 All config is in config.json file in the same app directory. the structure of this config is:
 ```
@@ -63,6 +64,35 @@ config.json
 
 # API
 You can look at the `main.cpp` source code for the api references, it speak for itself. There is some api like `/_app/*`, it's reserved for sveltekit SPA static files (because i make backend and frontend seperately).
+
+# Reverse proxy
+For reverse proxy like nginx, use this config:
+```
+server {
+    listen       443 ssl ;
+    server_name your.server.name;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_certificate      /your/fullchain.pem;
+    ssl_certificate_key  /your/privkey.pem;
+
+    location / {
+        proxy_http_version 1.1;
+        keepalive_timeout 30;
+        proxy_buffering off;
+        proxy_redirect off;
+        proxy_request_buffering off;
+        proxy_max_temp_file_size 0;
+        proxy_set_header        X-forwarded-for $proxy_add_x_forwarded_for;  # forward IP address
+        proxy_set_header        X-forwarded-host "example.com"; # this is not always necessary, but host is used by some features like "roots"
+        proxy_set_header        X-Forwarded-Proto $scheme; 
+        
+        client_max_body_size    0;  # disable max size for uploads
+
+        proxy_pass https://localhost:{your program port};
+    }
+}
+```
 
 # Final thought
 This is a small project, mostly just for fun but its features are still helpful and easy to use. In the backend code i keep most config data in QJsonObject, so you may see huge nested loop just to modify a single json object. For the frontend, as i mentioned in the source code, if you want simplicity you can just modify endpoint for traditional MVC style (with inja), or htmx.
