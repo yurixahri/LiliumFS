@@ -53,7 +53,7 @@ ninja install -j1
 If you don't have ninja please install ninja package from msys2.
 Now you can go to your msys2 installed directory, go to **mingw64/bin** and find qtcreator.exe, open it and config Qt build kit and compiler. After that you can clone this project source code and open it in QtCreator and build it. Build binary will be located in `/build`.
 
-For frontend, all the code is in `/client`. Frontend is a Sveltekit project, it's an easy framework, works normal with js, html and css. Get the lasted Nodejs and run `npm run install` to install all the modules, then you can run `npm run dev` to run the frontend. When tesing most of the api will work on frontend except for login and logout function. To build the frontend run `npm run build`, this will create a single page in `/client/built`, copy all the contents inside build directory and move it to `/client`, next to the compiled qt program. The whole program structure is:
+For frontend, all the code is in `/client`. Frontend is a Sveltekit project, it's an easy framework, works normal with js, html and css. Get the lasted Nodejs and run `npm run install` to install all the modules, then you can run `npm run dev` to run the frontend. When testing most of the api will work on frontend except for login and logout function (because of mismatch hostname). To build the frontend run `npm run build`, this will create a single page in `/client/built`, copy all the contents inside build directory and move it to `/client`, next to the compiled qt program. The whole program structure is:
 ```
 /client
    -> contains all the svelte kit build contents
