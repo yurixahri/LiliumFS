@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from "$app/navigation";
+	import { authenticate, authorize } from "$lib/auth/info";
 	import Button from "$lib/components/ui/button/button.svelte";
 	import { Input } from "$lib/components/ui/input";
     import {logo} from "$lib/images/base64"
@@ -52,8 +53,16 @@
 		if (isLocalhost) {
 			goto('/__/admin');
 		}
+
+        if ((await authenticate()) && (await authorize())) {
+            goto('/__/admin');
+        }
 	});
 </script>
+
+<svelte:head>
+	<title>LiliumFS Admin Login</title>
+</svelte:head>
 	
 <Toaster
 	position="top-center"

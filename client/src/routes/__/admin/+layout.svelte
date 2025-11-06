@@ -53,15 +53,22 @@
 		if (!isLocalhost) {
 			if (!(await authenticate()) || !(await authorize())) {
 				goto('/__/admin/login');
+			}else{
+				isAuthorized = true;
+				goto('/__/admin');
 			}
 		} else {
-			goto('/__/admin');
 			isAuthorized = true;
+			goto('/__/admin');
 		}
 	});
 
 
 </script>
+
+<svelte:head>
+	<title>LiliumFS Admin Page</title>
+</svelte:head>
 
 <Toaster
 	position="top-center"

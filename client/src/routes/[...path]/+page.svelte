@@ -328,6 +328,10 @@
     // $inspect(breadcrumb)
 </script>
 
+<svelte:head>
+	<title>LiliumFS Home Page</title>
+</svelte:head>
+
 <Toaster
 	position="top-center"
 	toastOptions={{

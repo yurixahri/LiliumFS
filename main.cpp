@@ -297,9 +297,9 @@ int main(int argc, char *argv[])
     });
 
     server.route("/__/admin/*", [](const QUrl &url, const QHttpServerRequest &request) {
-        if (!request.remoteAddress().isLoopback() && !isAuthorized(request)) {
-            return sendStatus("Forbidden", QHttpServerResponse::StatusCode::Forbidden);
-        }
+        // if (!request.remoteAddress().isLoopback() && !isAuthorized(request)) {
+        //     return sendStatus("Forbidden", QHttpServerResponse::StatusCode::Forbidden);
+        // }
 
         QString path = url.toString();
         while(path.endsWith('/')) {
