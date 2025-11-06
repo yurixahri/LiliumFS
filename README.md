@@ -96,3 +96,8 @@ server {
 
 # Final thought
 This is a small project, mostly just for fun but its features are still helpful and easy to use. In the backend code i keep most config data in QJsonObject, so you may see huge nested loop just to modify a single json object. For the frontend, as i mentioned in the source code, if you want simplicity you can just modify endpoint for traditional MVC style (with inja), or htmx.
+
+## Credits
+[qt-bcrypt](https://github.com/andreybutov/qt-bcrypt)
+[rang](https://github.com/agauniyal/rang)
+[inja](https://github.com/pantor/inja)
