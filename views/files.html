@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/7.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" integrity="sha512-SfTiTlX6kk+qitfevl/7LibUOeJWlt9rbyDn92a1DqWOw9vWG2MFoays0sgObmWazO5BQPiFucnnEAjpAB+/Sw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <title>Files</title>
+</head>
+<body>
+    <div style="display: flex; flex-direction: column;">
+        <a href="/files" style="display: flex; align-items: center; margin-bottom: 0.5rem;">
+                <i class="fa fa-home" aria-hidden="true"></i>
+                <span>...</span>
+        </a>
+        <a href="/files/{{back}}" style="display: flex; align-items: center; margin-bottom: 0.5rem;">
+                <i class="fa fa-folder-open" aria-hidden="true"></i>
+                <span>...</span>
+        </a>
+
+        {% for folder in folders %}
+            <a href="/files/{{dir}}{{folder.n}}" style="display: flex; align-items: center; margin-bottom: 0.5rem;">
+                <i class="fa fa-folder-open" aria-hidden="true"></i>
+                <span>{{folder.n_decoded}}</span>
+            </a>
+        {% endfor %}
+    
+        {% for file in files %}
+            <a href="/files/{{dir}}{{file.n}}" style="display: flex; align-items: center; margin-bottom: 0.5rem;">
+                <i class="fa fa-file" aria-hidden="true"></i>
+                <span>{{file.n_decoded}}</span>
+            </a>
+        {% endfor %}
+    </div>
+
+</body>
+<style>
+    body {
+        font-size: large;
+        background-color: aliceblue;
+        margin: 2em;
+    }
+
+    i.fa {
+        margin-right: 8px;
+    }
+
+    a{
+        width: fit-content;
+    }
+</style>
+</html>
