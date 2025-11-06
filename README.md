@@ -3,7 +3,7 @@
 # Introduction
 This a my personal project, based on HFS by [rejetto](https://github.com/rejetto/hfs). This project backend is written in C++ with QT framework, and Svelte for frontend.
 
-Currently the project only support Windows, but i think this can be built in Linux with no problem.
+Currently the project only support Windows, but i think this can be built on Linux with no problem.
 
 # Quick Review
 LiliumFS is a small, fast HTTP file server, easy to config and just one click to run.
