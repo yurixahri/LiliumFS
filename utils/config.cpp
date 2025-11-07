@@ -25,6 +25,7 @@ bool getConfig(){
         config["folders"] = QJsonArray();
         config["files"] = QJsonArray();
         config["accounts"] = QJsonArray();
+        config["virtual"] = QJsonArray();
         config["encryption_key"] = QtBCrypt::generateSalt();
         writeConfig();
         return true;

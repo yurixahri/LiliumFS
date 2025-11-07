@@ -373,6 +373,8 @@ int main(int argc, char *argv[])
             relative_path.chop(1);
         }
 
+
+
         QJsonObject res;
         QJsonArray sourceFolders = config["folders"].toArray();
         QJsonArray sourceFiles = config["files"].toArray();
@@ -434,6 +436,7 @@ int main(int argc, char *argv[])
             res["files"] = files;
         }else{
             QStringList path = relative_path.split("/");
+
             bool isExist = false;
             for (const auto &folder : std::as_const(sourceFolders)){
                 auto _folder = folder.toObject();
@@ -477,10 +480,12 @@ int main(int argc, char *argv[])
             }
 
             /* find virtual root */
+
             if (path.length() == 1 && !isExist){
                 for (const auto &virtualRoot : std::as_const(sourceVirtualRoots)) {
                     auto _virtualRoot = virtualRoot.toObject();
                     if (path[0] == _virtualRoot["name"]){
+                        isExist = true;
                         QJsonArray virtualFolders = _virtualRoot.value("folders").toArray();
                         QJsonArray virtualFiles = _virtualRoot.value("files").toArray();
                         QJsonArray folders;
@@ -509,6 +514,7 @@ int main(int argc, char *argv[])
                         res["folders"] = folders;
                         res["files"] = files;
                     }
+                    if (isExist) break;
                 }
             }else if (path.length() > 1 && !isExist){
                 for (const auto &virtualRoot : std::as_const(sourceVirtualRoots)) {
@@ -559,6 +565,7 @@ int main(int argc, char *argv[])
                             res["files"] = container;
                         }
                     }
+                    if (isExist) break;
                 }
             }
             /* find virtual root */
@@ -914,39 +921,39 @@ int main(int argc, char *argv[])
             }
             if (isFound) break;
 
-            for (const auto virtualRoot :std::as_const(sourceVirtualRoots)) {
-                auto _virtualRoot = virtualRoot.toObject();
-                if (path[0] == _virtualRoot["name"]){
-                    QJsonArray virtualFolders = _virtualRoot.value("folders").toArray();
-                    QJsonArray virtualFiles = _virtualRoot.value("files").toArray();
-                    path.removeFirst();
-
-                    for (const auto &folder : std::as_const(virtualFolders)){
-                        auto _folder = folder.toObject();
-                        if (path[0] == _folder.value("name").toString()){
-                            canDownload = canAccessSource(username, _folder["canDownload"]);
-                            isFound = true;
-                            path[0] = _folder.value("src").toString();
-                            break;
+            if (path.length() > 1){
+                for (const auto virtualRoot :std::as_const(sourceVirtualRoots)) {
+                    auto _virtualRoot = virtualRoot.toObject();
+                    if (path[0] == _virtualRoot["name"]){
+                        QJsonArray virtualFolders = _virtualRoot.value("folders").toArray();
+                        QJsonArray virtualFiles = _virtualRoot.value("files").toArray();
+                        path.removeFirst();
+                        for (const auto &folder : std::as_const(virtualFolders)){
+                            auto _folder = folder.toObject();
+                            if (path[0] == _folder.value("name").toString()){
+                                canDownload = canAccessSource(username, _folder["canDownload"]);
+                                isFound = true;
+                                path[0] = _folder.value("src").toString();
+                                break;
+                            }
                         }
-                    }
-                    if (isFound) break;
-                    for (const auto &file : std::as_const(virtualFiles)){
-                        auto _file = file.toObject();
-                        if (path[0] == file.toObject().value("name").toString()){
-                            canDownload = canAccessSource(username, _file["canDownload"]);
-                            isFound = true;
-                            _isFile = true;
-                            path[0] = file.toObject().value("src").toString();
-                            break;
+                        if (isFound) break;
+                        for (const auto &file : std::as_const(virtualFiles)){
+                            auto _file = file.toObject();
+                            if (path[0] == file.toObject().value("name").toString()){
+                                canDownload = canAccessSource(username, _file["canDownload"]);
+                                isFound = true;
+                                _isFile = true;
+                                path[0] = file.toObject().value("src").toString();
+                                break;
+                            }
                         }
+                        break;
                     }
-                    break;
                 }
             }
             break;
         }
-
 
         QString absolute_path = path.join("/");
         if (!_isFile && isFound) _isFile = isFile(absolute_path);
@@ -1143,6 +1150,7 @@ int main(int argc, char *argv[])
     // quint16 port = tcpServer->serverPort();
     //tcpServer.release();
     checkSessions();
-
+    logNormal("Main page: http://localhost:"+QString::number(port).toStdString()+"/");
+    logNormal("Admin page: http://localhost:"+QString::number(port).toStdString()+"/__/admin/");
     return a.exec();
 }
