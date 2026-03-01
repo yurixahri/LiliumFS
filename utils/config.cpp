@@ -43,20 +43,8 @@ bool getConfig(){
     QJsonParseError parseError;
     QJsonDocument doc = QJsonDocument::fromJson(data, &parseError);
 
-    if (parseError.error != QJsonParseError::NoError) {
+    if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
         logError("JSON parse error:" + parseError.errorString().toStdString());
-        logWarning("Generate default config");
-        config["port"] = 9090;
-        config["folders"] = QJsonArray();
-        config["files"] = QJsonArray();
-        config["accounts"] = QJsonArray();
-        config["encryption_key"] = QtBCrypt::generateSalt();
-        writeConfig();
-        return true;
-    }
-
-    if (!doc.isObject()) {
-        logError("Config file does not contain a JSON object!");
         logWarning("Generate default config");
         config["port"] = 9090;
         config["folders"] = QJsonArray();
