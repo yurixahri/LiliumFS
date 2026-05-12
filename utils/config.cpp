@@ -68,6 +68,7 @@ bool getConfig(){
     config.port = data.value("port", 9090).toUInt();
     config.encryption_key = data.value("encryption_key").toString();
 
+
     if (config.encryption_key.isEmpty()) {
         config.encryption_key = QtBCrypt::generateSalt();
     }
