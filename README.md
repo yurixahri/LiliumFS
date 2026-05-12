@@ -11,8 +11,8 @@ LiliumFS is a small, fast HTTP file server, easy to config and just one click to
 * Freely add and custom your source name.
 * Control permissions on each source.
 * Can upload and delete (with permissions).
+* Zip files and directories at ease.
 
-*TODO: Add zip function*
 # How to use
 Download the lasted release, extract to a folder and run the executable.
 
@@ -29,8 +29,8 @@ All config is in config.json file in the same app directory. the structure of th
     "encryption_key": "",
     "accounts": [],
     "files": [],
-    "folders": [],
-    "virtual":[]
+    "dirs": [],
+    "vds":[]
 }
 ```
 ### port
@@ -44,7 +44,7 @@ Holding the list of source that you add from the admin panel, can be customized 
 ### virtual
 A list of virtual root, each virtual root has 2 types of permissions: See and Download, and each can has it own files and folders list.
 
-*Side note: Because i reserved "/ __ /" for api, if you name your source or virtual root "__", it will be skip and just call the api.*
+*Side note: Because i reserved /__/, /_app/, /_static/ for api, if you name your source or virtual directory like one of them, it will be skip and just call the api.*
 
 # How to build
 To build this project, please install msys2 and get the lasted [mingw-w64-x86_64-qt6-base](https://packages.msys2.org/packages/mingw-w64-x86_64-qt6-base) and [mingw-w64-x86_64-qt6-static](https://packages.msys2.org/packages/mingw-w64-x86_64-qt6-static), this is a static build project.
@@ -58,6 +58,8 @@ ninja install -j1
 ```
 If you don't have ninja please install ninja package from msys2.
 Now you can go to your msys2 installed directory, go to **mingw64/bin** and find qtcreator.exe, open it and config Qt build kit and compiler. After that you can clone this project source code and open it in QtCreator and build it. Build binary will be located in `/build`.
+
+For libarchive, consider install one version older, latest package may not link zlib statically.
 
 For frontend, all the code is in `/client`. Frontend is a Sveltekit project, it's an easy framework, works normal with js, html and css. Get the lasted Nodejs and run `npm run install` to install all the modules, then you can run `npm run dev` to run the frontend. When testing most of the api will work on frontend except for login and logout function (because of mismatch hostname). To build the frontend run `npm run build`, this will create a single page in `/client/built`, copy all the contents inside build directory and move it to `/client`, next to the compiled qt program. The whole program structure is:
 ```
