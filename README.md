@@ -14,7 +14,7 @@ LiliumFS is a small, fast HTTP file server, easy to config and just one click to
 * Zip files and directories at ease.
 
 # How to use
-Download the lasted release, extract to a folder and run the executable.
+Download the lasted release, extract to a directory and run the executable.
 
 The page can be access at `http://localhost:{config.port}`,
 
@@ -39,16 +39,16 @@ Default port is 9090, you can change the port in the config file or via admin pa
 A random generated key (its name should be salt, i'm just lazy to change), that use for hashing account password and sessionId. This key will be generated one when you first run the program.
 ### accounts
 A list of created account, can be customized in admin panel.
-### files and folders
-Holding the list of source that you add from the admin panel, can be customized in admin panel. Each folder has 4 types of permissions: See, Download, Upload, Delete. Each file has 2 types of permissions: See and Download. Each permission can be customized as "Anyone", "No One", "Any account" or Selected accounts.
+### files and directories
+Holding the list of source that you add from the admin panel, can be customized in admin panel. Each directory has 4 types of permissions: See, Download, Upload, Delete. Each file has 2 types of permissions: See and Download. Each permission can be customized as "Anyone", "No One", "Any account" or Selected accounts.
 ### virtual
-A list of virtual root, each virtual root has 2 types of permissions: See and Download, and each can has it own files and folders list.
+A list of virtual root, each virtual root has 2 types of permissions: See and Download, and each can has it own files and directories list.
 
 *Side note: Because i reserved /__/, /_app/, /_static/ for api, if you name your source or virtual directory like one of them, it will be skip and just call the api.*
 
 # How to build
 To build this project, please install msys2 and get the lasted [mingw-w64-x86_64-qt6-base](https://packages.msys2.org/packages/mingw-w64-x86_64-qt6-base) and [mingw-w64-x86_64-qt6-static](https://packages.msys2.org/packages/mingw-w64-x86_64-qt6-static), this is a static build project.
-Get the lasted [qcoro](https://github.com/qcoro/qcoro), extract it to a folder, open msys2 mingw64 terminal in the folder and run:
+Get the lasted [qcoro](https://github.com/qcoro/qcoro), extract it to a directory, open msys2 mingw64 terminal in the directory and run:
 ```
 mkdir build
 cd build
