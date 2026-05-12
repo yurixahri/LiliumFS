@@ -184,15 +184,15 @@
 
 
     let initChangeVirtualRoot = {
-        oldName: "",
-        newName: "",
+        old_name: "",
+        new_name: "",
         can_see: "",
         can_download: "",
     }
 
     let changingVirtualRoot = $state({
-        oldName: "",
-        newName: "",
+        old_name: "",
+        new_name: "",
         can_see: "",
         can_download: "",
     })
@@ -200,8 +200,8 @@
     let isOpenChangeVirtualRoot: boolean = $state(false);
     async function openChangeVirtualRoot(changedata: any){
         isOpenChangeVirtualRoot = true;
-        initChangeVirtualRoot.oldName = changedata.name;
-        initChangeVirtualRoot.newName = changedata.name;
+        initChangeVirtualRoot.old_name = changedata.name;
+        initChangeVirtualRoot.new_name = changedata.name;
         initChangeVirtualRoot.can_see = changedata.can_see;
         initChangeVirtualRoot.can_download = changedata.can_download;
         await getAccounts()
@@ -425,7 +425,7 @@
       <Dialog.Content>
         <div class="break-words">
             <h2 class="mb-2">Virtual root name:</h2>
-            <Input bind:value={changingVirtualRoot.newName} spellcheck=false class="mb-2"></Input>
+            <Input bind:value={changingVirtualRoot.new_name} spellcheck=false class="mb-2"></Input>
             <div class="flex justify-between mt-5">
                 <RuleDropDown label="Who can see" accounts={accounts} bind:value={changingVirtualRoot.can_see}></RuleDropDown>
                 <RuleDropDown label="Who can download" accounts={accounts} bind:value={changingVirtualRoot.can_download}></RuleDropDown>
