@@ -5,17 +5,17 @@
     import { Input } from "$lib/components/ui/input/index.js";
     import { Button } from "$lib/components/ui/button/index.js";
     
-    let { afterAdd, isVirtual = false, virtualRootName = ""} = $props();
+    let { afterAdd, is_vd = false, vd_name = ""} = $props();
     
     let drives: string[] = $state([]);
     let currentDrive: string = $state("");
     let path: string[] = $state([]);
     let dirContents: any = $state([]);
     let selected = $state({
-        folders: [],
+        dirs: [],
         files: []
     });
-    let selectedCount = $derived(selected.folders.length + selected.files.length);
+    let selectedCount = $derived(selected.dirs.length + selected.files.length);
     let input: string = $derived(currentDrive + "/" + path.join("/"));
     let fetchSuccess: boolean = $state(true);
     let isFetching: boolean = $state(false);
@@ -87,24 +87,24 @@
 
     function emptySelected() {
         selected = {
-            folders: [],
+            dirs: [],
             files: []
         }
     }
 
     async function add(){
         try {
-            let req: {folders: any[]; files: any[]; name: string}  = {
-                folders: [],
+            let req: {dirs: any[]; files: any[]; name: string}  = {
+                dirs: [],
                 files: [],
                 name: "",
             }
-            for (let folder of selected.folders){
+            for (let dir of selected.dirs){
                 const item: any = {
-                    src: (currentDrive + (currentDrive != "" ? "/"+path.join("/") + "/" :  "")).replaceAll("//", "/") + folder,
-                    name: folder
+                    src: (currentDrive + (currentDrive != "" ? "/"+path.join("/") + "/" :  "")).replaceAll("//", "/") + dir,
+                    name: dir
                 }
-                req.folders.push(item);
+                req.dirs.push(item);
             }
 
             for (let file of selected.files){
@@ -118,8 +118,8 @@
             let endPoint = "admin/api/addSources"
             
             
-            if (isVirtual){
-                req.name = virtualRootName;
+            if (is_vd){
+                req.name = vd_name;
                 endPoint = "admin/api/addVirtualChild"
             }
             
@@ -176,7 +176,7 @@
                     {#if currentDrive == ""}    
                         {#each drives as drive}
                         <div class="flex items-center mb-2 p-2 cursor-pointer rounded-sm hover:bg-accent">
-                            <input type="checkbox" name="path" value={drive} bind:group={selected.folders}>
+                            <input type="checkbox" name="path" value={drive} bind:group={selected.dirs}>
                             <div role="none" class="flex flex-1 items-center ml-4 break-words" onclick={async ()=>{await getDriveContents(drive)}}>
                                 <HardDrive/>
                                 <span class="ml-2 flex-1">{drive}</span>
@@ -184,9 +184,9 @@
                         </div>
                         {/each}
                     {:else}
-                        {#each dirContents.folders as item}
+                        {#each dirContents.dirs as item}
                         <div class="flex items-center mb-2 p-2 cursor-pointer rounded-sm hover:bg-accent">
-                            <input type="checkbox" name="path" value={item} bind:group={selected.folders}>
+                            <input type="checkbox" name="path" value={item} bind:group={selected.dirs}>
                             <div role="none" class="flex flex-1 items-center ml-4 break-words" onclick={async ()=>{addPath(item); await getDirContents()}}>
                                 <Folder/>
                                 <span class="ml-2 flex-1">{item}</span>

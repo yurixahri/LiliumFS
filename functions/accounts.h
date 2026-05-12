@@ -11,6 +11,8 @@
 #include "functions/sources.h"
 
 QHttpServerResponse addAccount(const QHttpServerRequest &request){
+    QWriteLocker locker(&config.lock);
+
     if (auto isInvalid = isContentTypeInvalid(request, "application/json")){
         return std::move(isInvalid.value());
     }
@@ -38,30 +40,29 @@ QHttpServerResponse addAccount(const QHttpServerRequest &request){
     }
 
     //checking duplicate account
-    QJsonArray accounts = config["accounts"].toArray();
-    for (const auto &account : std::as_const(accounts)){
-        if (account.toObject().value("username").toString() == username)
+    for (auto &account : config.accounts){
+        if (account.username == username)
             return sendStatus("Username already exists", QHttpServerResponder::StatusCode::BadRequest);
     }
 
-    QJsonObject account;
-    if (accounts.size() == 0){
-        account["username"] = username;
-        account["password"] = hashing(password);
-        account["isAdmin"] = true;
+    account_t new_account;
+    if (config.accounts.size() == 0){
+        new_account.is_admin = true;
     }else{
-        account["username"] = username;
-        account["password"] = hashing(password);
-        account["isAdmin"] = false;
+        new_account.is_admin = false;
     }
-    accounts.append(account);
-    config["accounts"] = accounts;
+    new_account.username = username;
+    new_account.password = hashing(password);
+
+    config.accounts << new_account;
     writeConfig();
 
     return sendStatus(QHttpServerResponse::StatusCode::Ok);
 }
 
 QHttpServerResponse changeAccount(const QHttpServerRequest &request){
+    QWriteLocker locker(&config.lock);
+
     if (auto isInvalid = isContentTypeInvalid(request, "application/json")){
         return std::move(isInvalid.value());
     }
@@ -75,7 +76,7 @@ QHttpServerResponse changeAccount(const QHttpServerRequest &request){
     QJsonObject body = doc.object();
     QString username = body.value("username").toString();
     QString password = body.value("password").toString();
-    bool isAdmin =  body.value("isAdmin").toBool();
+    bool is_admin =  body.value("is_admin").toBool();
 
     static const QRegularExpression isPasswordValid(R"(^[ -~]{3,}$)");
     if (!password.isEmpty()){
@@ -85,25 +86,21 @@ QHttpServerResponse changeAccount(const QHttpServerRequest &request){
         }
     }
 
-    QJsonArray accounts = config["accounts"].toArray();
-    uint32_t index = 0;
-    for (const auto &account : std::as_const(accounts)){
-        auto _account = account.toObject();
-        if ( _account.value("username").toString() == username){
-            if (!password.isEmpty()) _account["password"] = hashing(password);
-            _account["isAdmin"] = isAdmin;
-            accounts[index] = _account;
-            config["accounts"] = accounts;
+    for (auto &account : config.accounts){
+        if (account.username == username){
+            if (!password.isEmpty()) account.password = hashing(password);
+            account.is_admin = is_admin;
             writeConfig();
             return sendStatus(QHttpServerResponse::StatusCode::Ok);
         }
-        ++index;
     }
 
     return sendStatus("Unknown error", QHttpServerResponder::StatusCode::BadRequest);
 }
 
 QHttpServerResponse deleteAccount(const QHttpServerRequest &request){
+    QWriteLocker locker(&config.lock);
+
     if (auto isInvalid = isContentTypeInvalid(request, "application/json")){
         return std::move(isInvalid.value());
     }
@@ -117,59 +114,50 @@ QHttpServerResponse deleteAccount(const QHttpServerRequest &request){
     QJsonObject body = doc.object();
     QString username = body.value("username").toString();
 
-
-    QJsonArray oldAccounts = config["accounts"].toArray();
-    QJsonArray newAccounts;
-    for (const auto &account : std::as_const(oldAccounts)){
-        if (account.toObject().value("username").toString() != username){
-            newAccounts.append(account);
-        }
-
-    }
-    config["accounts"] = newAccounts;
-
-
+    config.accounts.removeIf([&](const account_t &account){
+        return account.username == username;
+    });
     // also remove the account in the source rules if it's exist
 
-    QJsonArray oldFolders = config["folders"].toArray();
-    QJsonArray newFolders;
-
-    for (const auto &folder : std::as_const(oldFolders)){
-        auto _folder = folder.toObject();
-        if (_folder["canSee"].isArray()) _folder["canSee"] = removeAccountAccessSource(username, _folder["canSee"]);
-        if (_folder["canUpload"].isArray()) _folder["canUpload"] = removeAccountAccessSource(username, _folder["canUpload"]);
-        if (_folder["canDelete"].isArray()) _folder["canDelete"] = removeAccountAccessSource(username, _folder["canDelete"]);
-        if (_folder["canDownload"].isArray()) _folder["canDownload"] = removeAccountAccessSource(username, _folder["canDownload"]);
-        newFolders.append(_folder);
+    for (auto &dir : config.dirs){
+        removeAccountAccessSource(username, dir.can_see);
+        removeAccountAccessSource(username, dir.can_download);
+        removeAccountAccessSource(username, dir.can_upload);
+        removeAccountAccessSource(username, dir.can_delete);
     }
 
-    QJsonArray oldFiles = config["files"].toArray();
-    QJsonArray newFiles;
-    for (const auto &file : std::as_const(oldFiles)){
-        auto _file = file.toObject();
-        if (_file["canSee"].isArray()) _file["canSee"] = removeAccountAccessSource(username, _file["canSee"]);
-        if (_file["canDownload"].isArray()) _file["canDownload"] = removeAccountAccessSource(username, _file["canDownload"]);
-        newFiles.append(_file);
+    for (auto &file : config.files){
+        removeAccountAccessSource(username, file.can_see);
+        removeAccountAccessSource(username, file.can_download);
     }
 
-    config["folders"] = newFolders;
-    config["files"] = newFiles;
+    for (auto &vd : config.vds) {
+        removeAccountAccessSource(username, vd.can_see);
+
+        for (auto &dir : vd.dirs){
+            removeAccountAccessSource(username, dir.can_see);
+            removeAccountAccessSource(username, dir.can_download);
+            removeAccountAccessSource(username, dir.can_upload);
+            removeAccountAccessSource(username, dir.can_delete);
+        }
+
+        for (auto &file : vd.files){
+            removeAccountAccessSource(username, file.can_see);
+            removeAccountAccessSource(username, file.can_download);
+        }
+    }
 
     writeConfig();
     return sendStatus(QHttpServerResponse::StatusCode::Ok);
 }
 
 QHttpServerResponse getAccounts(){
-    QJsonArray accounts = config["accounts"].toArray();
-    uint32_t index = 0;
-    for (const auto &account : std::as_const(accounts)){
-        auto _account = account.toObject();
-        _account.remove("password");
-        accounts[index] = _account;
-        ++index;
-    }
+    QReadLocker locker(&config.lock);
 
-    QJsonDocument doc(accounts);
+    QVariantList accounts;
+    for(const auto &account : config.accounts) accounts << account_to_map_client(account);
+
+    QJsonDocument doc = QJsonDocument::fromVariant(accounts);
     QHttpServerResponse response("application/json; charset=utf-8", doc.toJson(QJsonDocument::Compact), QHttpServerResponse::StatusCode::Ok);
 
     response.setHeaders(createHeaders(.cache = false));

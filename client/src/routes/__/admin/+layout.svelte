@@ -55,11 +55,11 @@
 				goto('/__/admin/login');
 			}else{
 				isAuthorized = true;
-				goto('/__/admin');
+				goto(window.location.pathname);
 			}
 		} else {
 			isAuthorized = true;
-			goto('/__/admin');
+			goto(window.location.pathname);
 		}
 	});
 

@@ -62,7 +62,7 @@ inline QStringList getMountedVolumes() {
 //     return list;
 // }
 
-inline bool isExist(const QString &path){
+inline bool isPathExist(const QString &path){
     QFileInfo info(path);
     return info.exists();
 }

@@ -1,26 +1,26 @@
 // export interface Drives: string[]
 
-export interface folder{
+export interface dir{
     name: string,
     src: string,
-    canSee: string | string[],
-    canUpload: string | string[],
-    canDelete: string | string[],
-    canDownload: string | string[],
+    can_see: string | string[],
+    can_upload: string | string[],
+    can_delete: string | string[],
+    can_download: string | string[],
 }
 
 export interface file{
     name: string,
     src: string,
-    canSee: string | string[],
-    canDownload: string | string[],
+    can_see: string | string[],
+    can_download: string | string[],
 }
 
-export interface virtual{
+export interface vd{
     name: string,
-    folders: folder[],
+    dirs: dir[],
     files: file[],
-    canSee: string | string[],
-    canDownload: string | string[],
+    can_see: string | string[],
+    can_download: string | string[],
 }
 

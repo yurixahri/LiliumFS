@@ -5,7 +5,7 @@
 #include <QDateTime>
 #include <utils/stringUtils.h>
 
-inline void writeLog(const QString &message) {
+inline void writeLog(QString message) {
     QFile logFile("./log.txt");
 
     if (logFile.open(QIODevice::Append | QIODevice::Text)) {

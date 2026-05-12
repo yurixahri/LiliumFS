@@ -1,10 +1,18 @@
-QT = core httpserver network concurrent QCoroCore
+QT = core5compat core httpserver network concurrent QCoroCore
 
-CONFIG += c++20 cmdline
+CONFIG += c++20 cmdline static
 QMAKE_CXXFLAGS += -fcoroutines
 # You can make your code fail to compile if it uses deprecated APIs.
 # In order to do so, uncomment the following line.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
+DEFINES += ZLIB_STATIC LIBARCHIVE_STATIC
+
+
+# -larchive -llzma -lbz2 -lz -lxml2 -liconv -lcharset -lbcrypt -lcrypto
+LIBS = -larchive \
+       C:/msys64/mingw64/lib/libz.a \
+       -lbz2 -llzma -lzstd -liconv -lbcrypt -lws2_32 \
+       $$LIBS
 
 SOURCES += \
         main.cpp \
@@ -39,10 +47,15 @@ HEADERS += \
     utils/qtbcrypt.h \
     utils/rang.hpp \
     utils/stringUtils.h \
+    utils/tar.h \
+    utils/types.h \
     webSocketHelper.h
 
 DISTFILES += \
+    app.rc \
     utils/openwall_crypt/x86.S
 
 RESOURCES += \
     resources.qrc
+
+RC_FILE += app.rc

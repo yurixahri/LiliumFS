@@ -137,7 +137,6 @@
         <file>client/static/logo (1).png</file>
         <file>client/static/logo.png</file>
         <file>client/static/robots.txt</file>
-        <file>client/static/Screenshot 2025-11-01 193855.png</file>
         <file>client/.env.production</file>
         <file>client/.gitignore</file>
         <file>client/.prettierignore</file>
@@ -151,5 +150,7 @@
         <file>client/tsconfig.json</file>
         <file>client/vite.config.ts</file>
         <file>client/.env</file>
+        <file>icon.ico</file>
+        <file>app.rc</file>
     </qresource>
 </RCC>

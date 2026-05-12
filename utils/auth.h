@@ -17,10 +17,10 @@ typedef struct{
     QDateTime initTime;
 } session;
 
-static QVector<session> sessions;
+static QList<session> sessions;
 
 const QString hashing(const QString &string){
-    QString hashed = QtBCrypt::hashPassword(string, config["encryption_key"].toString());
+    QString hashed = QtBCrypt::hashPassword(string, config.encryption_key);
     return hashed;
 }
 
@@ -59,10 +59,9 @@ QString getSessionUsername(const QString &id){
 }
 
 bool isAuthValid(const QString &username, const QString &password){
-    QJsonArray accounts = config["accounts"].toArray();
-    for (const auto &account : std::as_const(accounts)) {
-        if (account.toObject().value("username").toString() == username &&
-            account.toObject().value("password").toString() == password){
+    for (auto &account : config.accounts) {
+        if (account.username == username &&
+            account.password == password){
             return true;
         }
     }
@@ -72,13 +71,11 @@ bool isAuthValid(const QString &username, const QString &password){
 bool isAdmin(const QString &id){
     for (const auto &session : sessions){
         if (session.id == id){
-            QJsonArray accounts = config["accounts"].toArray();
-            for (const auto &account : std::as_const(accounts)) {
-                if (account.toObject().value("username").toString() == session.username &&
-                    account.toObject().value("isAdmin").toBool()){
+            for (auto &account : config.accounts) {
+                if (account.username == session.username &&
+                    account.is_admin){
                     return true;
                 }
-
             }
         }
     }
@@ -116,17 +113,15 @@ const QByteArray clearAuth(){
 }
 
 QCoro::Task<> checkSessions() {
-    uint32_t expireTime = 3*24*60*60; // 3 days
-    std::chrono::seconds awaitTime(60*60);
+    uint32_t expire_time = 3*24*60*60; // 3 days
+    std::chrono::seconds await_time(60*60);
     while (true) {
-        QDateTime currentTime = QDateTime::currentDateTime();
-        QVector<session> newSessions;
-        for (const auto &session : sessions){
-            if (session.initTime.secsTo(currentTime) < expireTime)
-                newSessions.push_back(session);
-        }
-        sessions = newSessions;
-        co_await QCoro::sleepFor(awaitTime);
+        QDateTime current_time = QDateTime::currentDateTime();
+        sessions.removeIf([&](const session &s){
+            return s.initTime.secsTo(current_time) >= expire_time;
+        });
+
+        co_await QCoro::sleepFor(await_time);
     }
 }
 

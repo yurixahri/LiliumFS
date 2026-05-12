@@ -17,7 +17,7 @@
 	interface account {
 		username: string;
 		password: string | null;
-		isAdmin: boolean;
+		is_admin: boolean;
 	}
 
 	let accounts: account[] = $state([]);
@@ -37,21 +37,21 @@
 	let addAccountDialog: account = $state({
 		username: '',
 		password: '',
-		isAdmin: false
+		is_admin: false
 	});
 
 	let isChangeOpen = $state(false);
 	let changeAccountDialog: account = $state({
 		username: '',
 		password: '',
-		isAdmin: false
+		is_admin: false
 	});
 
 	let isDeleteOpen = $state(false);
 	let deleteAccountDialog: account = $state({
 		username: '',
 		password: '',
-		isAdmin: false
+		is_admin: false
 	});
 
     async function addAccount(){
@@ -183,8 +183,8 @@
 				></Input>
 
                 <div class="flex items-center gap-3 mt-4">
-                    <Checkbox id="isAdmin" bind:checked={addAccountDialog.isAdmin} />
-                    <Label for="isAdmin">Admin privilege</Label>
+                    <Checkbox id="is_admin" bind:checked={addAccountDialog.is_admin} />
+                    <Label for="is_admin">Admin privilege</Label>
                 </div>
 				<div class="flex items-center justify-end">
 					<Button variant="secondary" onclick={async ()=>{await addAccount()}}>Add</Button>
@@ -214,8 +214,8 @@
 				></Input>
 
                 <div class="flex items-center gap-3 mt-4">
-                    <Checkbox id="isAdmin" bind:checked={changeAccountDialog.isAdmin} />
-                    <Label for="isAdmin">Admin privilege</Label>
+                    <Checkbox id="is_admin" bind:checked={changeAccountDialog.is_admin} />
+                    <Label for="is_admin">Admin privilege</Label>
                 </div>
 				<div class="flex items-center justify-end">
 					<Button variant="secondary" onclick={async ()=>{await onChange()}}>Save</Button>
@@ -241,7 +241,7 @@
                 <DropdownMenu.Trigger>
                     <div class="flex items-center p-2 cursor-pointer rounded-sm hover:bg-accent">
                         <div class="flex gap-2">
-							{#if account.isAdmin}
+							{#if account.is_admin}
 								<UserStar></UserStar>
 							{:else}
 								<User></User>

@@ -28,7 +28,7 @@
             })
 
             if (result.ok){
-                toast.success("Logined", {
+                toast.success("Logon", {
                     duration: 1000
                 })
                 await 

@@ -2,7 +2,7 @@
 	import { EVENTS, rootApi, rootUrl } from "$lib/stores/globalValues";
 	import { onMount } from "svelte";
     import { page } from '$app/stores';
-    import {Loader2Icon, File as FileIcon, Folder, UserRound, Upload, MousePointerClick, Trash2, CircleChevronLeft, House} from 'lucide-svelte'
+    import {Loader2Icon, File as FileIcon, Folder, UserRound, Upload, MousePointerClick, Trash2, CircleChevronLeft, House, Package} from 'lucide-svelte'
     import { Separator } from "$lib/components/ui/separator/index.js";
 	import { Progress } from "$lib/components/ui/progress/index.js";
     import * as Dialog from "$lib/components/ui/dialog/index.js";
@@ -16,14 +16,14 @@
 
     let currentPath = $derived($page.url.pathname.replace("/", ""));
     let breadcrumb = $derived(currentPath.split("/").slice(0, currentPath.split("/").length-1))
-    let currentSources: {folders: any[], files: any[], canSee: boolean, canDownload: boolean, canUpload: boolean, canDelete: boolean, totalSize: number} = $state({
-        folders: [],
+    let currentSources: {dirs: any[], files: any[], can_see: boolean, can_download: boolean, can_upload: boolean, can_delete: boolean, total_size: number} = $state({
+        dirs: [],
         files: [],
-        canSee: true,
-        canDownload: true,
-        canUpload: false,
-        canDelete: false,
-        totalSize: 0
+        can_see: false,
+        can_download: false,
+        can_upload: false,
+        can_delete: false,
+        total_size: 0
     })
     let isFetching: boolean = $state(false);
 
@@ -34,8 +34,8 @@
             let result = await fetch(rootApi + "api/getSources/" + encodeURIComponent(currentPath));
             currentSources = await result.json();        
             isFetching = false;
-            selectedDeleteSources.files = [];
-            selectedDeleteSources.folders = [];
+            selectedSources.files = [];
+            selectedSources.dirs = [];
         } catch (error) {
 
         }
@@ -54,7 +54,7 @@
     }
     let files = $state<FileList | null>();
     let filesArray = $derived(files ? Array.from(files) : []);
-    let totalSize = $state(0);
+    let total_size = $state(0);
     let uploadedSize =  $state(0);
     let uploadedFiles = $state(0);
     let startTime = 0;
@@ -63,7 +63,7 @@
     let uploadSpeed = $state(0);
     let lastUploadedSize = 0;
     $effect(()=>{
-        totalSize = files ? Array.from(files).reduce((sum, f) => sum + f.size, 0) : 0
+        total_size = files ? Array.from(files).reduce((sum, f) => sum + f.size, 0) : 0
         uploadedSize = 0;
         uploadedFiles = 0;
     })
@@ -220,29 +220,28 @@
     }
 
     let isSelect = $state(false);
-    function onSelect(){
-        isSelect = !isSelect;
-        if (!isSelect) {
-            selectedDeleteSources.files = [];
-            selectedDeleteSources.folders = [];
-        }
-    }
-
-    let selectedDeleteSources = $state({
+    
+    let selectedSources : { relative_path: string; dirs: any[]; files: any[]} = $state({
         relative_path: "",
-        folders: [],
+        dirs: [],
         files: []
     })
 
+    function onSelect(){
+        isSelect = !isSelect;
+        selectedSources.files = [];
+        selectedSources.dirs = [];
+    }
+
     async function deleteSources(){
-        selectedDeleteSources.relative_path = currentPath;
+        selectedSources.relative_path = currentPath;
         try {
             let result = await fetch(rootApi+"api/deleteSources", {
                 method: "POST",
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(selectedDeleteSources)
+                body: JSON.stringify(selectedSources)
             });
 
             toast.success("Deleted", {
@@ -254,6 +253,41 @@
             })
         }
         await getSources();
+        isSelect = false;
+    }
+
+    let isZipOpen = $state(false);
+    function openZip(){
+        isZipOpen = true;
+    }
+
+    async function makeZip(){
+        selectedSources.relative_path = currentPath;
+        if (selectedSources.files.length == 0 && selectedSources.dirs.length == 0){
+            selectedSources.dirs = currentSources.dirs.map(dir => (dir.name));
+            selectedSources.files = currentSources.files.map(file => (file.name));
+        };
+
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = rootApi + "api/zip";
+        form.style.display = 'none';
+        form.target = "_blank";
+        form.enctype = "text/plain";
+        
+        const input = document.createElement('input');
+        input.name = 'data';
+        input.value = JSON.stringify(selectedSources);
+        form.appendChild(input);
+        
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
+
+        toast.success("Download starting...");
+        await getSources();
+        isZipOpen = false;
+        isSelect = false;
     }
 
     let isLogin = $state(false);
@@ -373,13 +407,28 @@
                 <p>{uploadedFiles}/{filesArray.length}</p>
                 <div class="flex gap-4">
                     <p>{(uploadSpeed / 1024 / 1024).toFixed(2)} MB/s</p>
-                    <p>{(uploadedSize/totalSize * 100).toFixed(2)}%</p>
+                    <p>{(uploadedSize/total_size * 100).toFixed(2)}%</p>
                 </div>
             </div>
-            <Progress value={(uploadedSize/totalSize * 100)} max={100} class="" />
+            <Progress value={(uploadedSize/total_size * 100)} max={100} class="" />
         {/if}
         
         <Button variant="secondary" onclick={startUpload}>Start</Button>
+    </Dialog.Content>
+</Dialog.Root>
+
+<!-- zip -->
+<Dialog.Root bind:open={isZipOpen}>
+    <Dialog.Content class="">
+        <Dialog.Header>
+            <Dialog.Title>Create tar.gz</Dialog.Title>
+        </Dialog.Header>
+        {#if selectedSources.dirs.length == 0 && selectedSources.files.length == 0}
+            <p>You have not selected any files or directories, so all files and directories will be included in the tar.gz file.</p>
+        {:else}
+            <p>Are you sure you want to create a tar.gz file for {selectedSources.dirs.length} directories and {selectedSources.files.length} files?</p>
+        {/if}
+        <Button variant="secondary" onclick={async () => await makeZip()}>Yes</Button>
     </Dialog.Content>
 </Dialog.Root>
 
@@ -433,7 +482,7 @@
                     {/if}
                 </span>
             </Button>
-            {#if currentSources.canUpload}
+            {#if currentSources.can_upload}
                 <Button variant="secondary" onclick={openUpload} class="transition-all">
                     <Upload/>
                     <span class="hidden sm:inline">Upload</span>
@@ -444,13 +493,19 @@
                 <span class="hidden sm:inline">Select</span>
             </Button>
             {#if isSelect}
-                {#if currentSources.canDelete}
-                    <Alert bindFunction={deleteSources} trigger_title="Delete">
-                        {#snippet icon()}
-                            <Trash2/>
-                        {/snippet}
-                    </Alert>
+                {#if currentSources.can_delete}
+                <Alert bindFunction={deleteSources} trigger_title="Delete">
+                    {#snippet icon()}
+                    <Trash2/>
+                    {/snippet}
+                </Alert>
                 {/if}
+            {/if}
+            {#if currentSources.can_download}
+                <Button variant="secondary" onclick={openZip} class="transition-all">
+                    <Package/>
+                    <span class="hidden sm:inline">Tar.gz</span>
+                </Button>
             {/if}
         </div>
     
@@ -482,19 +537,19 @@
                 </div>
             {:else}
                 <div class=" flex flex-col m-auto w-full">
-                    {#each currentSources.folders as folder}
+                    {#each currentSources.dirs as dir}
                     <div role="none" class="flex flex-1 items-center break-words gap-2">
                         {#if isSelect}
-                            <input type="checkbox" name="path" value={folder.name} bind:group={selectedDeleteSources.folders}>
+                            <input type="checkbox" name="path" value={dir.name} bind:group={selectedSources.dirs}>
                         {/if}
-                        <a href={encodeURIComponent(folder.name)} class="w-full break-words p-2 rounded-sm flex items-center justify-between gap-2 hover:bg-accent flex-wrap">
+                        <a href={encodeURIComponent(dir.name)} class="w-full break-words p-2 rounded-sm flex items-center justify-between gap-2 hover:bg-accent flex-wrap">
                             <div class="flex items-center gap-2">
                                 <Folder class="shrink-0"/>
-                                <span>{folder.name}</span>
+                                <span>{dir.name}</span>
                             </div>
-                            {#if folder.time}
+                            {#if dir.time}
                                 <div class="flex items-center gap-2 text-sm">                   
-                                    <span class="text-muted-foreground">{(new Date(folder.time)).toLocaleString()}</span>
+                                    <span class="text-muted-foreground">{(new Date(dir.time)).toLocaleString()}</span>
                                 </div>
                             {/if}
                         </a>
@@ -505,7 +560,7 @@
                     {#each currentSources.files as file}
                     <div role="none" class="flex flex-1 items-center break-words gap-2">
                         {#if isSelect}
-                            <input type="checkbox" name="path" value={file.name} bind:group={selectedDeleteSources.files}>
+                            <input type="checkbox" name="path" value={file.name} bind:group={selectedSources.files}>
                         {/if}
                         <a href={rootUrl+currentPath+encodeURIComponent(file.name)} target="_blank" class="w-full break-words p-2 rounded-sm flex items-center justify-between gap-2 hover:bg-accent flex-wrap">
                             <div class="flex items-center gap-2">
@@ -527,7 +582,7 @@
     <div class="h-10 w-full border-t-1 border-t-secondary bg-sidebar-accent/80">
         <div class="w-full h-full flex items-center justify-between flex-wrap gap-2 px-4 py-2">
                     
-            <p class="text-md text-muted-foreground">{currentSources.folders.length} folders, {currentSources.files.length} files, {convertByteFormat(currentSources.totalSize)}</p>
+            <p class="text-md text-muted-foreground">{currentSources.dirs.length} dirs, {currentSources.files.length} files, {convertByteFormat(currentSources.total_size)}</p>
         </div>
     </div>
 </div>

@@ -15,13 +15,15 @@
 #include "functions/accounts.h"
 #include "functions/sources.h"
 
+#include "utils/tar.h"
+
 int main(int argc, char *argv[])
 {
     QCoreApplication a(argc, argv);
 
     if (!getConfig()) return 1;
 
-    const uint16_t port = config["port"].toInt();
+    const uint16_t port = config.port;
 
     QHttpServer server;
     QTcpServer tcpServer;
@@ -49,14 +51,13 @@ int main(int argc, char *argv[])
 
             see the httpTemplate.h for reference
         */
-        return _getDrives();
+        return getDrives();
     });
 
     server.route("/__/admin/api/getDirectoryContents/*", [](const QUrl &url, const QHttpServerRequest &request) {
         if (!request.remoteAddress().isLoopback() && !isAuthorized(request)) {
             return sendStatus("Forbidden", QHttpServerResponse::StatusCode::Forbidden);
         }
-
 
        return getDirectoryContents(url);
     });
@@ -118,7 +119,7 @@ int main(int argc, char *argv[])
             return sendStatus("Forbidden", QHttpServerResponse::StatusCode::Forbidden);
         }
 
-        return addVirtualRoot(request);
+        return addVirtualDirectory(request);
     });
 
     server.route("/__/admin/api/changeVirtualRoot", QHttpServerRequest::Method::Options,
@@ -131,7 +132,7 @@ int main(int argc, char *argv[])
             return sendStatus("Forbidden", QHttpServerResponse::StatusCode::Forbidden);
         }
 
-        return changeVirtualRoot(request);
+        return changeVirtualDirectory(request);
     });
 
     server.route("/__/admin/api/deleteVirtualRoot", QHttpServerRequest::Method::Options,
@@ -144,7 +145,7 @@ int main(int argc, char *argv[])
             return sendStatus("Forbidden", QHttpServerResponse::StatusCode::Forbidden);
         }
 
-        return deleteVirtualRoot(request);
+        return deleteVirtualDirectory(request);
     });
 
     server.route("/__/admin/api/addVirtualChild", QHttpServerRequest::Method::Options,
@@ -193,7 +194,7 @@ int main(int argc, char *argv[])
         }
 
         QJsonObject settings;
-        settings["port"] = config["port"];
+        settings["port"] = config.port;
 
         QJsonDocument doc(settings);
         QHttpServerResponse response("application/json; charset=utf-8", doc.toJson(QJsonDocument::Compact), QHttpServerResponse::StatusCode::Ok);
@@ -223,7 +224,7 @@ int main(int argc, char *argv[])
         }
 
         QJsonObject body = doc.object();
-        config["port"] = body["port"].toInt();
+        config.port = body["port"].toInt();
         writeConfig();
 
         if (!tcpReload(tcpServer, server,body["port"].toInt())){
@@ -289,7 +290,7 @@ int main(int argc, char *argv[])
             return sendStatus("Forbidden", QHttpServerResponse::StatusCode::Forbidden);
         }
 
-        if (config["accounts"].toArray().size() == 0){
+        if (config.accounts.size() == 0){
             return sendStatus(QHttpServerResponse::StatusCode::Ok);
         }else{
             return sendStatus(QHttpServerResponse::StatusCode::ServiceUnavailable);
@@ -301,38 +302,42 @@ int main(int argc, char *argv[])
         //     return sendStatus("Forbidden", QHttpServerResponse::StatusCode::Forbidden);
         // }
 
-        QString path = url.toString();
+        QString path = url.path();
         while(path.endsWith('/')) {
             path.chop(1);
         }
 
         //logNormal(path.toStdString());
         QString root = "./client/__/admin/";
-        if (!isExist( root+path)) {
+        if (!isPathExist(root+path)) {
             return sendStatus("This path is not exist", QHttpServerResponder::StatusCode::BadRequest);
         }
 
         if (!isFile(root+path)){
             if (!path.isEmpty()) path += "/";
-            if(isExist(root+path+"index.html")){
+            if(isPathExist(root+path+"index.html")){
                 QFile file(root+path+"index.html");
-                file.open(QIODevice::ReadOnly);
-                QByteArray fileContent = file.readAll();
-                file.close();
+                if (!file.open(QIODevice::ReadOnly)) {
+                    return sendStatus(QHttpServerResponder::StatusCode::NotFound);
+                }
+
                 QMimeType mime = getMimeType(root+path+"index.html");
-                QHttpServerResponse response(mime.name().toUtf8(), fileContent);
-                response.setHeaders(createHeaders(.cache = false));
+                QHttpServerResponse response(file.readAll());
+                QHttpHeaders headers = createHeaders(.cache = false);
+                headers.append("Content-Type", mime.name().toUtf8());
+                response.setHeaders(headers);
                 return response;
             }else{
                 return sendStatus("No page here", QHttpServerResponder::StatusCode::BadRequest);
             }
         }else{
             QFile file(root+path);
-            file.open(QIODevice::ReadOnly);
-            QByteArray fileContent = file.readAll();
-            file.close();
+            if (!file.open(QIODevice::ReadOnly)) {
+                return sendStatus(QHttpServerResponder::StatusCode::NotFound);
+            }
+
             QMimeType mime = getMimeType(root+path);
-            QHttpServerResponse response(fileContent, mime.name().toUtf8());
+            QHttpServerResponse response(file.readAll());
             QHttpHeaders headers = createHeaders(.cache = false);
             headers.append("Content-Type", mime.name().toUtf8());
             response.setHeaders(headers);
@@ -342,50 +347,77 @@ int main(int argc, char *argv[])
 
     // For svelte static files
     server.route("/_app/*", [](const QUrl &url) {
-        QString path = url.toString();
+        QString path = url.path();
         while(path.endsWith('/')) {
             path.chop(1);
         }
 
         QString root = "./client/_app/";
-        if (!isExist(root+path)) {
+        if (!isPathExist(root+path)) {
             return sendStatus("This path is not exist", QHttpServerResponder::StatusCode::BadRequest);
         }
 
         if (isFile(root+path)){
             QFile file(root+path);
-            file.open(QIODevice::ReadOnly);
-            QByteArray fileContent = file.readAll();
-            file.close();
+            if (!file.open(QIODevice::ReadOnly)) {
+                return sendStatus(QHttpServerResponder::StatusCode::NotFound);
+            }
+
             QMimeType mime = getMimeType(root+path);
-            QHttpServerResponse response(fileContent);
+            QHttpServerResponse response(file.readAll());
             QHttpHeaders headers = createHeaders(.cache = false);
             headers.append("Content-Type", mime.name().toUtf8());
             response.setHeaders(headers);
             return response;
+        }else{
+            return sendStatus(QHttpServerResponder::StatusCode::NotFound);
+        }
+    });
+
+    server.route("/_static/*", [](const QUrl &url) {
+        QString path = url.path();
+        while(path.endsWith('/')) {
+            path.chop(1);
+        }
+
+        QString root = "./client/";
+        if (!isPathExist(root+path)) {
+            return sendStatus("This path is not exist", QHttpServerResponder::StatusCode::BadRequest);
+        }
+
+        if (isFile(root+path)){
+            QFile file(root+path);
+            if (!file.open(QIODevice::ReadOnly)) {
+                return sendStatus(QHttpServerResponder::StatusCode::NotFound);
+            }
+
+            QMimeType mime = getMimeType(root+path);
+            QHttpServerResponse response= QHttpServerResponse::fromFile(root+path);
+            QHttpHeaders headers = createHeaders(.cache = false);
+            headers.append("Content-Type", mime.name().toUtf8());
+            headers.append("Cache-Control", "no-store, must-revalidate");
+            response.setHeaders(headers);
+            return response;
+        }else{
+            return sendStatus(QHttpServerResponder::StatusCode::NotFound);
         }
     });
 
     /* user api */
     server.route("/__/api/getSources/*", [](const QUrl &url, const QHttpServerRequest &request) {
-        QString relative_path = url.toString();
+        QReadLocker locker(&config.lock);
+
+        QString relative_path = url.path();
         while(relative_path.endsWith('/')) {
             relative_path.chop(1);
         }
 
-
-
-        QJsonObject res;
-        QJsonArray sourceFolders = config["folders"].toArray();
-        QJsonArray sourceFiles = config["files"].toArray();
-        QJsonArray sourceVirtualRoots = config["virtual"].toArray();
-
         // if request path is not root location then check these rules
-        bool canSee = true;
-        bool canUpload = false;
-        bool canDelete = false;
-        bool canDownload = true;
-        qint64 totalSize = 0;
+        bool can_see = true;
+        bool can_upload = false;
+        bool can_delete = false;
+        bool can_download = false;
+        qint64 total_size = 0;
 
         QString username = "";
         auto id = getAuthCookie(request);
@@ -396,187 +428,166 @@ int main(int argc, char *argv[])
             }
         }
 
-
+        QList<directory_t> res_dirs;
+        QList<file_t> res_files;
         if (relative_path.isEmpty()){
-            QJsonArray folders;
-            QJsonArray files;
-            for (const auto &folder : std::as_const(sourceFolders)) {
-                auto _folder = folder.toObject();
-                if (canAccessSource(username, _folder["canSee"])){
-                    QFileInfo info(folder.toObject().value("src").toString());
-                    QJsonObject _folder;
-                    _folder["time"] = info.birthTime().toUTC().toString();
-                    _folder["name"] = folder.toObject().value("name").toString();
-                    folders.push_back(_folder);
+            // QJsonArray folders;
+            // QJsonArray files;
+            for (auto &d : config.dirs) {
+                if (canAccessSource(username, d.can_see)){
+                    QFileInfo info(d.src);
+                    d.time = info.birthTime().toUTC().toString();
+                    res_dirs.push_back(d);
                 }
             }
-            for (const auto &file : std::as_const(sourceFiles)) {
-                auto _file = file.toObject();
-                if (canAccessSource(username, _file["canSee"])) {
-                    QFileInfo info(file.toObject().value("src").toString());
-                    QJsonObject _file;
-                    _file["time"] = info.birthTime().toUTC().toString();
-                    _file["name"] = file.toObject().value("name").toString();
-                    _file["size"] = info.size();
-                    files.push_back(_file);
+            for (auto &file : config.files) {
+                if (canAccessSource(username, file.can_see)) {
+                    QFileInfo info(file.src);
+                    file.time = info.birthTime().toUTC().toString();
+                    file.size = info.size();
+                    res_files.push_back(file);
                 }
             }
 
-            for (const auto &virtualRoot : std::as_const(sourceVirtualRoots)) {
-                auto _virtualRoot = virtualRoot.toObject();
-                if (canAccessSource(username, _virtualRoot["canSee"])){
-                    QJsonObject _folder;
-                    _folder["name"] =  _virtualRoot.value("name").toString();
-                    folders.push_back(_folder);
+            for (auto &vd: config.vds) {
+                if (canAccessSource(username, vd.can_see)){
+                    directory_t dir;
+                    dir.name =  vd.name;
+                    res_dirs.push_back(dir);
                 }
             }
 
-
-            res["folders"] = folders;
-            res["files"] = files;
         }else{
             QStringList path = relative_path.split("/");
 
-            bool isExist = false;
-            for (const auto &folder : std::as_const(sourceFolders)){
-                auto _folder = folder.toObject();
-                if (path[0] == _folder.value("name").toString()){
-                    path[0] = _folder.value("src").toString();
-                    canSee = canAccessSource(username, _folder["canSee"]);
-                    canUpload = canAccessSource(username, _folder["canUpload"]);
-                    canDelete = canAccessSource(username, _folder["canDelete"]);
-                    canDownload = canAccessSource(username, _folder["canDownload"]);
-                    isExist = true;
+            bool is_exist = false;
+            for (auto &dir : config.dirs){
+                if (path[0] == dir.name){
+                    path[0] = dir.src;
+                    can_see = canAccessSource(username, dir.can_see);
+                    can_download = canAccessSource(username, dir.can_download);
+                    can_upload = canAccessSource(username, dir.can_upload);
+                    can_delete = canAccessSource(username, dir.can_delete);
+                    is_exist = true;
                     break;
                 }
             }
 
-            if (isExist && canSee){
+            if (is_exist && can_see){
                 QString absolute_path = path.join("/");
                 if (path.length() == 1) absolute_path += "/"; // ex: D: exception
-                auto folders = getDirectories(absolute_path);
-                auto files = getFiles(absolute_path);
-                totalSize = getDirectorySize(absolute_path);
-                QJsonArray container;
-                for (auto &folder : folders){
-                    QFileInfo info(absolute_path+"/"+folder);
-                    QJsonObject _folder;
-                    _folder["time"] = info.birthTime().toUTC().toString();
-                    _folder["name"] = folder;
-                    container.append(_folder);
-                }
-                res["folders"] = container;
+                auto n_dirs = getDirectories(absolute_path);
+                auto n_files = getFiles(absolute_path);
+                total_size = getDirectorySize(absolute_path);
 
-                container = QJsonArray();
-                for (auto &file : files){
-                    QFileInfo info(absolute_path+"/"+file);
-                    QJsonObject _file;
-                    _file["time"] = info.birthTime().toUTC().toString();
-                    _file["name"] = file;
-                    _file["size"] = info.size();
-                    container.append(_file);
+                for (auto &n_dir : n_dirs){
+                    directory_t dir;
+                    QFileInfo info(absolute_path+"/"+n_dir);
+                    dir.name = n_dir;
+                    dir.time = info.birthTime().toUTC().toString();
+                    res_dirs.push_back(dir);
                 }
-                res["files"] = container;
+
+                for (auto &n_file : n_files){
+                    file_t file;
+                    QFileInfo info(absolute_path+"/"+n_file);
+                    file.name = n_file;
+                    file.time = info.birthTime().toUTC().toString();
+                    file.size = info.size();
+                    res_files.push_back(file);
+                }
             }
 
             /* find virtual root */
 
-            if (path.length() == 1 && !isExist){
-                for (const auto &virtualRoot : std::as_const(sourceVirtualRoots)) {
-                    auto _virtualRoot = virtualRoot.toObject();
-                    if (path[0] == _virtualRoot["name"]){
-                        isExist = true;
-                        QJsonArray virtualFolders = _virtualRoot.value("folders").toArray();
-                        QJsonArray virtualFiles = _virtualRoot.value("files").toArray();
-                        QJsonArray folders;
-                        QJsonArray files;
-                        for (const auto &folder : std::as_const(virtualFolders)) {
-                            auto _folder = folder.toObject();
-                            if (canAccessSource(username, _folder["canSee"])){
-                                QFileInfo info(folder.toObject().value("src").toString());
-                                QJsonObject _folder;
-                                _folder["time"] = info.birthTime().toUTC().toString();
-                                _folder["name"] = folder.toObject().value("name").toString();
-                                folders.push_back(_folder);
+            if (path.length() == 1 && !is_exist){
+                for (auto &vd : config.vds) {
+                    if (path[0] == vd.name){
+                        is_exist = true;
+                        for (auto &dir: vd.dirs) {
+                            if (canAccessSource(username, dir.can_see)){
+                                QFileInfo info(dir.src);
+                                dir.time = info.birthTime().toUTC().toString();
+                                res_dirs.push_back(dir);
                             }
                         }
-                        for (const auto &file : std::as_const(virtualFiles)) {
-                            auto _file = file.toObject();
-                            if (canAccessSource(username, _file["canSee"])) {
-                                QFileInfo info(file.toObject().value("src").toString());
-                                QJsonObject _file;
-                                _file["time"] = info.birthTime().toUTC().toString();
-                                _file["name"] = file.toObject().value("name").toString();
-                                _file["size"] = info.size();
-                                files.push_back(_file);
+                        for (auto &file : vd.files) {
+                            if (canAccessSource(username, file.can_see)) {
+                                QFileInfo info(file.src);
+                                file.time = info.birthTime().toUTC().toString();
+                                file.size = info.size();
+                                res_files.push_back(file);
                             }
                         }
-                        res["folders"] = folders;
-                        res["files"] = files;
                     }
-                    if (isExist) break;
+                    if (is_exist) break;
                 }
-            }else if (path.length() > 1 && !isExist){
-                for (const auto &virtualRoot : std::as_const(sourceVirtualRoots)) {
-                    auto _virtualRoot = virtualRoot.toObject();
-                    if (path[0] == _virtualRoot["name"]){
-                        QJsonArray virtualFolders = _virtualRoot.value("folders").toArray();
-                        for (const auto &folder : std::as_const(virtualFolders)){
-                            auto _folder = folder.toObject();
-                            if (path[1] == _folder.value("name").toString()){
-                                path[1] = _folder.value("src").toString();
-                                canSee = canAccessSource(username, _folder["canSee"]);
-                                canUpload = canAccessSource(username, _folder["canUpload"]);
-                                canDelete = canAccessSource(username, _folder["canDelete"]);
-                                canDownload = canAccessSource(username, _folder["canDownload"]);
-                                isExist = true;
+            }else if (path.length() > 1 && !is_exist){
+                for (auto &vd : config.vds) {
+                    if (path[0] == vd.name){
+                        for (auto &dir : vd.dirs){
+                            if (path[1] == dir.name){
+                                path[1] = dir.src;
+                                can_see = canAccessSource(username, dir.can_see);
+                                can_download = canAccessSource(username, dir.can_download);
+                                can_upload = canAccessSource(username, dir.can_upload);
+                                can_delete = canAccessSource(username, dir.can_delete);
+                                is_exist = true;
                                 break;
                             }
                         }
 
                         path.removeFirst();
 
-                        if (isExist && canSee){
+                        if (is_exist && can_see){
                             QString absolute_path = path.join("/");
 
                             if (path.length() == 1) absolute_path += "/"; // ex: D: exception
-                            auto folders = getDirectories(absolute_path);
-                            auto files = getFiles(absolute_path);
-                            totalSize = getDirectorySize(absolute_path);
-                            QJsonArray container;
-                            for (auto &folder : folders){
-                                QFileInfo info(absolute_path+"/"+folder);
-                                QJsonObject _folder;
-                                _folder["time"] = info.birthTime().toUTC().toString();
-                                _folder["name"] = folder;
-                                container.append(_folder);
-                            }
-                            res["folders"] = container;
+                            auto n_dirs = getDirectories(absolute_path);
+                            auto n_files = getFiles(absolute_path);
+                            total_size = getDirectorySize(absolute_path);
 
-                            container = QJsonArray();
-                            for (auto &file : files){
-                                QFileInfo info(absolute_path+"/"+file);
-                                QJsonObject _file;
-                                _file["time"] = info.birthTime().toUTC().toString();
-                                _file["name"] = file;
-                                _file["size"] = info.size();
-                                container.append(_file);
+                            for (auto &n_dir : n_dirs){
+                                directory_t dir;
+                                QFileInfo info(absolute_path+"/"+n_dir);
+                                dir.name = n_dir;
+                                dir.time = info.birthTime().toUTC().toString();
+                                res_dirs.push_back(dir);
                             }
-                            res["files"] = container;
+
+                            for (auto &n_file : n_files){
+                                file_t file;
+                                QFileInfo info(absolute_path+"/"+n_file);
+                                file.name = n_file;
+                                file.time = info.birthTime().toUTC().toString();
+                                file.size = info.size();
+                                res_files.push_back(file);
+                            }
                         }
                     }
-                    if (isExist) break;
+                    if (is_exist) break;
                 }
             }
             /* find virtual root */
         }
 
-        res["canSee"] = canSee;
-        res["canUpload"] = canUpload;
-        res["canDelete"] = canDelete;
-        res["canDownload"] = canDownload;
-        res["totalSize"] = totalSize;
-        QJsonDocument doc(res);
+        QVariantMap res;
+
+        QVariantList dirs;
+        for(const auto &d : res_dirs) dirs << dir_to_map_client(d);
+        res["dirs"] = dirs;
+
+        QVariantList files;
+        for(const auto &f : res_files) files << file_to_map_client(f);
+        res["files"] = files;
+
+        res["can_see"] = can_see;
+        res["can_upload"] = can_upload;
+        res["can_delete"] = can_delete;
+        res["can_download"] = can_download;
+        res["total_size"] = total_size;
+
+        QJsonDocument doc = QJsonDocument::fromVariant(res);
         QHttpServerResponse response("application/json; charset=utf-8", doc.toJson(QJsonDocument::Compact), QHttpServerResponse::StatusCode::Ok);
 
         response.setHeaders(createHeaders(.cache = false));
@@ -589,13 +600,15 @@ int main(int argc, char *argv[])
                  });
 
     server.route("/__/api/deleteSources", QHttpServerRequest::Method::Post, [](const QHttpServerRequest &request) {
+        QReadLocker locker(&config.lock);
+
         QJsonDocument doc;
 
         if (auto isInvalid = parseBody(doc, request.body())){
             return std::move(isInvalid.value());
         }
 
-        bool canDelete = false;
+        bool can_delete = false;
         QString username = "";
         auto id = getAuthCookie(request);
 
@@ -608,51 +621,44 @@ int main(int argc, char *argv[])
         QJsonObject body = doc.object();
         QJsonArray folders = body.value("folders").toArray();
         QJsonArray files = body.value("files").toArray();
-        QJsonArray sourceFolders = config["folders"].toArray();
-        QJsonArray sourceVirtualRoots = config["virtual"].toArray();
 
-
-        bool isExist = false;
+        bool is_exist = false;
         QString relative_path = QUrl::fromPercentEncoding(body.value("relative_path").toString().toUtf8());
         while(relative_path.endsWith('/')) {
             relative_path.chop(1);
         }
         QStringList path = relative_path.split("/");
 
-        for (const auto &folder : std::as_const(sourceFolders)){
-            auto _folder = folder.toObject();
-            if (path[0] == _folder.value("name").toString()){
-                path[0] = _folder.value("src").toString();
-                canDelete = canAccessSource(username, _folder["canDelete"]);
-                isExist = true;
+        for (auto &dir: config.dirs){
+            if (path[0] == dir.name){
+                path[0] = dir.src;
+                can_delete = canAccessSource(username, dir.can_delete);
+                is_exist = true;
                 break;
             }
         }
 
-        if (!isExist){
-            for (const auto &virtualRoot : std::as_const(sourceVirtualRoots)) {
-                auto _virtualRoot = virtualRoot.toObject();
-                if (path[0] == _virtualRoot["name"]){
-                    QJsonArray virtualFolders = _virtualRoot.value("folders").toArray();
-                    for (const auto &folder : std::as_const(virtualFolders)){
-                        auto _folder = folder.toObject();
-                        if (path[1] == _folder.value("name").toString()){
-                            path[1] = _folder.value("src").toString();
-                            canDelete = canAccessSource(username, _folder["canDelete"]);
-                            isExist = true;
+        if (!is_exist){
+            for (auto &vd : config.vds) {
+                if (path[0] == vd.name){
+                    for (auto &dir : config.dirs){
+                        if (path[1] == dir.name){
+                            path[1] = dir.src;
+                            can_delete = canAccessSource(username, dir.can_delete);
+                            is_exist = true;
                             path.removeFirst();
                             break;
                         }
                     }
                 }
-                if (isExist) break;
+                if (is_exist) break;
             }
         }
 
-        if (!isExist)
+        if (!is_exist)
             return sendStatus(QHttpServerResponse::StatusCode::BadRequest);
 
-        if(!canDelete)
+        if(!can_delete)
             return sendStatus(QHttpServerResponse::StatusCode::Unauthorized);
 
         QString absolute_path = path.join("/");
@@ -673,6 +679,8 @@ int main(int argc, char *argv[])
                  });
 
     server.route("/__/api/makeDirectory", QHttpServerRequest::Method::Post, [](const QHttpServerRequest &request) {
+        QReadLocker locker(&config.lock);
+
         QJsonDocument doc;
 
         if (auto isInvalid = parseBody(doc, request.body())){
@@ -688,55 +696,47 @@ int main(int argc, char *argv[])
             }
         }
 
-        bool canUpload = false;
+        bool can_upload = false;
         QJsonObject body = doc.object();
         QString name = body.value("name").toString();
         QString relative_path = QUrl::fromPercentEncoding(body.value("relative_path").toString().toUtf8());
 
-
-        QJsonArray sourceFolders = config["folders"].toArray();
-        QJsonArray sourceVirtualRoots = config["virtual"].toArray();
-
-        bool isExist = false;
+        bool is_exist = false;
         while(relative_path.endsWith('/')) {
             relative_path.chop(1);
         }
         QStringList path = relative_path.split("/");
 
-        for (const auto &folder : std::as_const(sourceFolders)){
-            auto _folder = folder.toObject();
-            if (path[0] == _folder.value("name").toString()){
-                path[0] = _folder.value("src").toString();
-                canUpload = canAccessSource(username, _folder["canUpload"]);
-                isExist = true;
+        for (auto &dir : config.dirs){
+            if (path[0] == dir.name){
+                path[0] = dir.src;
+                can_upload = canAccessSource(username, dir.can_upload);
+                is_exist = true;
                 break;
             }
         }
 
-        if (!isExist && path.length() > 1){
-            for (const auto &virtualRoot : std::as_const(sourceVirtualRoots)) {
-                auto _virtualRoot = virtualRoot.toObject();
-                if (path[0] == _virtualRoot["name"]){
-                    QJsonArray virtualFolders = _virtualRoot.value("folders").toArray();
-                    for (const auto &folder : std::as_const(virtualFolders)){
-                        auto _folder = folder.toObject();
-                        if (path[1] == _folder.value("name").toString()){\
-                            path[1] = _folder.value("src").toString();
-                            canUpload = canAccessSource(username, _folder["canUpload"]);
-                            isExist = true;
+        if (!is_exist && path.length() > 1){
+            for (auto &vd : config.vds) {
+                if (path[0] == vd.name){
+                    for (auto &dir : vd.dirs){
+                        if (path[1] == dir.name){
+                            path[1] = dir.src;
+                            can_upload = canAccessSource(username, dir.can_upload);
+                            is_exist = true;
                             path.removeFirst();
                             break;
                         }
                     }
                 }
-                if (isExist) break;
+                if (is_exist) break;
             }
         }
 
-        if (!isExist)
+        if (!is_exist)
             return sendStatus(QHttpServerResponse::StatusCode::BadRequest);
 
-        if(!canUpload)
+        if(!can_upload)
             return sendStatus(QHttpServerResponse::StatusCode::Unauthorized);
 
         QString absolute_path = path.join("/");
@@ -827,23 +827,123 @@ int main(int argc, char *argv[])
         }
     });
 
+    server.route("/__/api/zip", QHttpServerRequest::Method::Options,
+                 [](const QHttpServerRequest &) {
+                     return sendStatus(QHttpServerResponse::StatusCode::Ok);
+                 });
+
+    server.route("/__/api/zip", QHttpServerRequest::Method::Post, [](const QHttpServerRequest &request, QHttpServerResponder &responder) {
+        QReadLocker locker(&config.lock);
+
+        QUrlQuery query(request.body());
+        QByteArray data = query.queryItemValue("data", QUrl::FullyDecoded).toUtf8();
+        QJsonDocument doc;
+
+        if (auto isInvalid = parseBody(doc, data)){
+            return;
+        }
+
+        QJsonObject body = doc.object();
+        QString relative_path = body.value("relative_path").toString();
+        QJsonArray dirs = body.value("dirs").toArray();
+        QJsonArray files = body.value("files").toArray();
+
+        while(relative_path.endsWith('/')) {
+            relative_path.chop(1);
+        }
+        QStringList path = relative_path.split("/");
+        QString file_name = path.last();
+        QString username = "";
+        auto id = getAuthCookie(request);
+
+        if (id){
+            if (isAuthValid(*id)){
+                username = getSessionUsername(*id);
+            }
+        }
+
+        bool can_download = false;
+        while (true){
+            for (auto &dir : config.dirs){
+                if (path[0] == dir.name){
+                    can_download = canAccessSource(username, dir.can_download);
+                    path[0] = dir.src;
+                    break;
+                }
+            }
+            if (can_download) break;
+
+            if (path.length() > 1){
+                for (auto &vd : config.vds) {
+                    if (path[0] == vd.name){
+                        path.removeFirst();
+                        for (auto &dir : vd.dirs){
+                            if (path[0] == dir.name){
+                                can_download = canAccessSource(username, dir.can_download);
+                                path[0] = dir.src;
+                                break;
+                            }
+                        }
+                        if (can_download) break;
+                    }
+                }
+            }
+            break;
+        }
+
+        if (can_download){
+            auto shared_responder = std::make_shared<QHttpServerResponder>(std::move(responder));
+            QString absolute_path = path.join("/");
+            QThreadPool::globalInstance()->start([shared_responder, dirs, files, absolute_path, file_name]() {
+                QHttpHeaders headers;
+                headers.append("Content-Type", "application/x-gzip");
+                headers.append("Content-Encoding", "identity");
+                headers.append("Content-Disposition", "attachment; filename=\""+file_name+".tar\"");
+
+                // Headers must be written on the main thread too
+                QMetaObject::invokeMethod(qApp, [shared_responder, headers]() {
+                    shared_responder->writeBeginChunked(headers, QHttpServerResponder::StatusCode::Ok);
+                }, Qt::BlockingQueuedConnection);
+
+                archive* a = archive_write_new();
+                // archive_write_add_filter_gzip(a);
+                archive_write_set_format_pax_restricted(a);
+                archive_write_set_options(a, "no-null");
+                archive_write_set_bytes_in_last_block(a, 1);
+                archive_write_open(a, (void*)&shared_responder, nullptr, archiveWriteCallback, nullptr);
+
+                for (auto const &dir : dirs){
+                    if(addArchiveEntry(a, dir.toString(), absolute_path+"/"+dir.toString()) == ARCHIVE_FATAL) break;
+                }
+                for (auto const &file : files){
+                    if(addArchiveEntry(a, file.toString(), absolute_path+"/"+file.toString()) == ARCHIVE_FATAL) break;
+                }
+
+                archive_write_close(a);
+                archive_write_free(a);
+
+                // Finalize on main thread
+                QMetaObject::invokeMethod(qApp, [shared_responder]() {
+                    if (!shared_responder->isResponseCanceled()) {
+                        shared_responder->writeEndChunked(" ");
+                    }
+                }, Qt::BlockingQueuedConnection);
+            });
+        }
+    });
+
     /* Main page,  */
 
     server.route("/*", [](const QUrl &url, const QHttpServerRequest &request, QHttpServerResponder &responder) {
-        QString relative_path = url.toString();
+        QReadLocker locker(&config.lock);
+
+        QString relative_path = url.path();
 
         while(relative_path.endsWith('/')) {
             relative_path.chop(1);
         }
         //logNormal(relative_path.toStdString());
         QStringList path = relative_path.split("/");
-
-
-        bool isFound = false;
-        bool _isFile = false;
-        QJsonArray sourceFolders = config["folders"].toArray();
-        QJsonArray sourceFiles = config["files"].toArray();
-        QJsonArray sourceVirtualRoots = config["virtual"].toArray();
 
 
         QString username = "";
@@ -854,10 +954,11 @@ int main(int argc, char *argv[])
                 username = getSessionUsername(*id);
             }
         }
-        bool canDownload = false;
+        bool is_file = false;
+        bool can_download = false;
 
         /* checking the path compare with the sources in config, if exist then break
-         * isFound is just a flag to break out of the while loop if path is found in the sources
+         * is_found is just a flag to break out of the while loop if path is found in the sources
          * after checking if the path is not a file then continue check in the file system
          *
          * for example, if the request path is "Dir/file1.zip", first split the path into array
@@ -886,7 +987,7 @@ int main(int argc, char *argv[])
             also this implement is for svelte, as i mentioned above, you can use inja for mvc style
             ex: after all the checking
 
-            if(!_isFile){
+            if(!is_file){
                 auto folders = getFolders(absolute_path);
                 auto files = getFiles(absolute_path);
                 if (!relative_path.isEmpty()) relative_path += "/";
@@ -895,60 +996,49 @@ int main(int argc, char *argv[])
             }else{
                 same as below
             }
-            see the httpTemplate.h for reference
+            see the htmlTemplate.h for reference
          * */
 
         while (true){
-            for (const auto &folder : std::as_const(sourceFolders)){
-                auto _folder = folder.toObject();
-                if (path[0] == _folder.value("name").toString()){
-                    canDownload = canAccessSource(username, _folder["canDownload"]);
-                    isFound = true;
-                    path[0] = _folder.value("src").toString();
+            for (auto &dir : config.dirs){
+                if (path[0] == dir.name){
+                    can_download = canAccessSource(username, dir.can_download);
+                    path[0] = dir.src;
                     break;
                 }
             }
-            if (isFound) break;
-            for (const auto &file : std::as_const(sourceFiles)){
-                auto _file = file.toObject();
-                if (path[0] == file.toObject().value("name").toString()){
-                    canDownload = canAccessSource(username, _file["canDownload"]);
-                    isFound = true;
-                    _isFile = true;
-                    path[0] = file.toObject().value("src").toString();
+            if (can_download) break;
+            for (auto &file : config.files){
+                if (path[0] == file.name){
+                    can_download = canAccessSource(username, file.can_download);
+                    is_file = true;
+                    path[0] = file.src;
                     break;
                 }
             }
-            if (isFound) break;
+            if (can_download) break;
 
             if (path.length() > 1){
-                for (const auto virtualRoot :std::as_const(sourceVirtualRoots)) {
-                    auto _virtualRoot = virtualRoot.toObject();
-                    if (path[0] == _virtualRoot["name"]){
-                        QJsonArray virtualFolders = _virtualRoot.value("folders").toArray();
-                        QJsonArray virtualFiles = _virtualRoot.value("files").toArray();
+                for (auto &vd : config.vds) {
+                    if (path[0] == vd.name){
                         path.removeFirst();
-                        for (const auto &folder : std::as_const(virtualFolders)){
-                            auto _folder = folder.toObject();
-                            if (path[0] == _folder.value("name").toString()){
-                                canDownload = canAccessSource(username, _folder["canDownload"]);
-                                isFound = true;
-                                path[0] = _folder.value("src").toString();
+                        for (auto &dir : vd.dirs){
+                            if (path[0] == dir.name){
+                                can_download = canAccessSource(username, dir.can_download);
+                                path[0] = dir.src;
                                 break;
                             }
                         }
-                        if (isFound) break;
-                        for (const auto &file : std::as_const(virtualFiles)){
-                            auto _file = file.toObject();
-                            if (path[0] == file.toObject().value("name").toString()){
-                                canDownload = canAccessSource(username, _file["canDownload"]);
-                                isFound = true;
-                                _isFile = true;
-                                path[0] = file.toObject().value("src").toString();
+                        if (can_download) break;
+                        for (auto &file : vd.files){
+                            if (path[0] == file.name){
+                                can_download = canAccessSource(username, file.can_download);
+                                is_file = true;
+                                path[0] = file.src;
                                 break;
                             }
                         }
-                        break;
+                        if (can_download) break;
                     }
                 }
             }
@@ -956,29 +1046,28 @@ int main(int argc, char *argv[])
         }
 
         QString absolute_path = path.join("/");
-        if (!_isFile && isFound) _isFile = isFile(absolute_path);
+        if (!is_file && can_download) is_file = isFile(absolute_path);
 
         QHttpHeaders headers = createHeaders(.cache = false);
-        if(!_isFile){
+        if(!is_file){
             QString root = "./client/";
             QFile file(root+"index.html");
-            file.open(QIODevice::ReadOnly);
-            QByteArray fileContent = file.readAll();
-            file.close();
+            if (!file.open(QIODevice::ReadOnly)) {
+                return ;
+            }
             QMimeType mime = getMimeType(root+"index.html");
-
             headers.append("Content-Type", mime.name().toUtf8());
-            responder.write(fileContent, headers, QHttpServerResponder::StatusCode::Ok);
+            responder.write(file.readAll(), headers, QHttpServerResponder::StatusCode::Ok);
         }else{
             // implement chunk serving, resumeable
-            if (!canDownload) {
+            if (!can_download) {
                 responder.write("Forbidden content", "text/plain");
                 responder.write(headers, QHttpServerResponder::StatusCode::Forbidden);
                 return;
             }
 
             QFileInfo info(absolute_path);
-            QFile *file = new QFile(path.join("/"));
+            QFile *file = new QFile(absolute_path);
             if (!file->open(QIODevice::ReadOnly)) {
                 delete file;
                 responder.write("Cannot open file", "text/plain");
@@ -1022,8 +1111,6 @@ int main(int argc, char *argv[])
             auto status = (start > 0)   ? QHttpServerResponder::StatusCode::PartialContent
                                         : QHttpServerResponder::StatusCode::Ok;
 
-
-            QHttpHeaders headers = createHeaders();
             headers.append("Content-Type", mimeType.name().toUtf8());
             //headers.append("Content-Type", "application/octet-stream");
             //headers.append("Content-Length", QByteArray::number(contentLength));
@@ -1040,8 +1127,6 @@ int main(int argc, char *argv[])
 
 
             responder.write(file, headers, status);
-            // file->close();
-            // delete file;
         }
     });
 
@@ -1065,41 +1150,35 @@ int main(int argc, char *argv[])
             }
 
             QStringList path = relative_path.split("/");
-            bool isExist = false;
-            bool canUpload = false;
-            QJsonArray sourceFolders = config["folders"].toArray();
-            QJsonArray sourceVirtualRoots = config["virtual"].toArray();
-            for (const auto &folder : std::as_const(sourceFolders)){
-                auto _folder = folder.toObject();
-                if (path[0] == _folder.value("name").toString()){
-                    canUpload = canAccessSource(username, _folder["canUpload"]);
-                    isExist = true;
+            bool is_exist = false;
+            bool can_upload = false;
+            for (auto &dir : config.dirs){
+                if (path[0] == dir.name){
+                    can_upload = canAccessSource(username, dir.can_upload);
+                    is_exist = true;
                     break;
                 }
             }
 
-            if (!isExist){
-                for (const auto &virtualRoot : std::as_const(sourceVirtualRoots)) {
-                    auto _virtualRoot = virtualRoot.toObject();
-                    if (path[0] == _virtualRoot["name"]){
-                        QJsonArray virtualFolders = _virtualRoot.value("folders").toArray();
-                        for (const auto &folder : std::as_const(virtualFolders)){
-                            auto _folder = folder.toObject();
-                            if (path[1] == _folder.value("name").toString()){
-                                canUpload = canAccessSource(username, _folder["canUpload"]);
-                                isExist = true;
+            if (!is_exist){
+                for (auto &vd : config.vds) {
+                    if (path[0] == vd.name){
+                        for (auto &dir : vd.dirs){
+                            if (path[1] == dir.name){
+                                can_upload = canAccessSource(username, dir.can_upload);
+                                is_exist = true;
                                 break;
                             }
                         }
                     }
-                    if (isExist) break;
+                    if (is_exist) break;
                 }
             }
 
-            if (!isExist)
+            if (!is_exist)
                 return QHttpServerWebSocketUpgradeResponse::passToNext();
 
-            if(!canUpload)
+            if(!can_upload)
                 return QHttpServerWebSocketUpgradeResponse::passToNext();
 
             return QHttpServerWebSocketUpgradeResponse::accept();
@@ -1110,11 +1189,11 @@ int main(int argc, char *argv[])
     // Handle new WebSocket connections (note: no args)
     QObject::connect(&server, &QAbstractHttpServer::newWebSocketConnection, [&server]() {
         // Grab the pending connection
-        std::unique_ptr<QWebSocket> wsPtr = server.nextPendingWebSocketConnection();
-        if (!wsPtr) return;
+        std::unique_ptr<QWebSocket> ws_ptr = server.nextPendingWebSocketConnection();
+        if (!ws_ptr) return;
 
         // Transfer ownership to Qt's parent/cleanup model
-        QWebSocket *ws = wsPtr.release();         // release from unique_ptr
+        QWebSocket *ws = ws_ptr.release();         // release from unique_ptr
         ws->setParent(&server);                   // or manage in your own container
 
         // qDebug() << "WebSocket connected";
@@ -1150,6 +1229,8 @@ int main(int argc, char *argv[])
     // quint16 port = tcpServer->serverPort();
     //tcpServer.release();
     checkSessions();
+    QString version = "0.1.2";
+    logNormal("LiliumFS version "+version.toStdString());
     logNormal("Main page: http://localhost:"+QString::number(port).toStdString()+"/");
     logNormal("Admin page: http://localhost:"+QString::number(port).toStdString()+"/__/admin/");
     return a.exec();

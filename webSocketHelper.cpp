@@ -54,7 +54,7 @@ QString makeUniqueName(const QString &path, QString &fileName){
     QString base = QFileInfo(fileName).completeBaseName();
     QString ext  = QFileInfo(fileName).suffix().isEmpty() ? "" : "."+QFileInfo(fileName).suffix();
     uint64_t counter = 1;
-    while (isExist(path+"/"+fileName)){
+    while (isPathExist(path+"/"+fileName)){
         fileName = QString("%1 (%2)%3").arg(base).arg(counter).arg(ext);
         counter++;
     }
@@ -63,43 +63,40 @@ QString makeUniqueName(const QString &path, QString &fileName){
 }
 
 void uploadStart(QWebSocket *ws, const QJsonValue &data){
+    QReadLocker locker(&config.lock);
+
     QJsonObject object = data.toObject();
     if (!uploads.contains(ws)){
-        bool isExist = false;
+        bool is_exist = false;
         QString fileName = object.value("name").toString();
         QString relative_path = QUrl::fromPercentEncoding(object.value("path").toString().toUtf8());
         QStringList path = relative_path.split("/");
-        QJsonArray sourceFolders = config["folders"].toArray();
-        QJsonArray sourceVirtualRoots = config["virtual"].toArray();
-        for (const auto &folder : std::as_const(sourceFolders)){
-            if (path[0] == folder.toObject().value("name").toString()){
-                path[0] = folder.toObject().value("src").toString();
-                isExist = true;
+        for (auto &dir : config.dirs){
+            if (path[0] == dir.name){
+                path[0] = dir.src;
+                is_exist = true;
                 break;
             }
         }
 
-        if (!isExist){
-            for (const auto &virtualRoot : std::as_const(sourceVirtualRoots)) {
-                auto _virtualRoot = virtualRoot.toObject();
-                if (path[0] == _virtualRoot["name"]){
-                    QJsonArray virtualFolders = _virtualRoot.value("folders").toArray();
-                    for (const auto &folder : std::as_const(virtualFolders)){
-                        auto _folder = folder.toObject();
-                        if (path[1] == _folder.value("name").toString()){
-                            path[1] = _folder.value("src").toString();
-                            isExist = true;
+        if (!is_exist){
+            for (auto &vd : config.vds) {
+                if (path[0] == vd.name){
+                    for (auto &dir : vd.dirs){
+                        if (path[1] == dir.name){
+                            path[1] = dir.src;
+                            is_exist = true;
                             path.removeFirst();
                             break;
                         }
                     }
                 }
-                if (isExist) break;
+                if (is_exist) break;
             }
         }
 
 
-        if (!isExist){
+        if (!is_exist){
             emitEvent(ws, EVENTS::UPLOAD_ERROR);
             return;
         }
@@ -126,6 +123,9 @@ void removeUpload(QWebSocket *ws){
     auto *file = uploads.take(ws);
     if (file) {
         file->file.close();
+        if (file->receivedSize < file->expectedSize){
+            file->file.remove();
+        }
         delete file;
     }
 }

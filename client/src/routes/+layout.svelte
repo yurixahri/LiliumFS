@@ -1,15 +1,14 @@
 <script lang="ts">
 	import '../app.css';
 	//import favicon from '$lib/assets/favicon.svg';
-	import { background_image, icon } from '$lib/images/base64';
 
-	document.documentElement.style.setProperty('--bg-image', `url("${background_image}")`);
+	document.documentElement.style.setProperty('--bg-image', `url("/_static/koharu.jpg")`);
 	let { children } = $props();
 	
 </script>
 
 <svelte:head>
-	<link rel="icon" href={icon} />
+	<link rel="icon" href="/_static/icon-100.png" />
 </svelte:head>
 
 <div class="bg">
