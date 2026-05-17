@@ -79,12 +79,12 @@
         }
 
         let wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-        let wsUrl = wsProtocol + "//" + window.location.host + "/ws";
+        let wsUrl = wsProtocol + "//" + window.location.host + "/__/ws";
         const pendingResolvers: Record<number, (data: any) => void> = {};
     
         let socket: WebSocket;
         try{
-            socket = await connectWebSocket(`ws://localhost:9090/__/ws?path=${currentPath}`);
+            socket = await connectWebSocket(`${wsUrl}?path=${currentPath}`);
         }catch{
             return;
         }
