@@ -76,28 +76,33 @@ You can look at the `main.cpp` source code for the api references, it speak for 
 For reverse proxy like nginx, use this config:
 ```
 server {
-    listen       443 ssl ;
-    server_name your.server.name;
+        listen       443 ssl;
+        listen [::]:443 ssl;
+        server_name server.yurixahri.net;
 
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_certificate      /your/fullchain.pem;
-    ssl_certificate_key  /your/privkey.pem;
+		ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_certificate      /your/fullchain.pem;
+        ssl_certificate_key  /your/privkey.pem;
+		
+        location / {
+			proxy_http_version 1.1;
+			proxy_set_header Connection "";
+			proxy_set_header Host $host;
+			proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+			proxy_set_header X-Forwarded-Proto $scheme;	
+			proxy_buffering off;
+			proxy_request_buffering off;
+			proxy_cache off;
+			gzip off;
+			chunked_transfer_encoding on;
+			proxy_read_timeout 24h;
+			proxy_send_timeout 24h;
+			send_timeout 24h;
 
-    location / {
-        proxy_http_version 1.1;
-        keepalive_timeout 30;
-        proxy_buffering off;
-        proxy_redirect off;
-        proxy_request_buffering off;
-        proxy_max_temp_file_size 0;
-        proxy_set_header        X-forwarded-for $proxy_add_x_forwarded_for;  # forward IP address
-        proxy_set_header        X-forwarded-host "example.com"; # this is not always necessary, but host is used by some features like "roots"
-        proxy_set_header        X-Forwarded-Proto $scheme; 
-        
-        client_max_body_size    0;  # disable max size for uploads
-
-        proxy_pass https://localhost:{your program port};
-    }
+			client_max_body_size 0;
+			proxy_max_temp_file_size 0;
+			proxy_pass https://localhost:{your program port};
+        }
 }
 ```
 
