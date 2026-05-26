@@ -19,7 +19,7 @@ struct uploadFile {
 
 extern QHash<QWebSocket*, uploadFile*> uploads;
 
-void emitEvent(QWebSocket *ws, const uint8_t &event, const QJsonValue &data = NULL) ;
+void emitEvent(QWebSocket *ws, const uint8_t &event, const QJsonValue &data = QJsonValue::Null) ;
 
 void onEvent(QWebSocket *ws, const uint8_t &event, const QJsonValue &data);
 

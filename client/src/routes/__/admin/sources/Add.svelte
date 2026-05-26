@@ -16,7 +16,7 @@
         files: []
     });
     let selectedCount = $derived(selected.dirs.length + selected.files.length);
-    let input: string = $derived(currentDrive + "/" + path.join("/"));
+    let input: string = $derived( (path.length > 0 && currentDrive != "/" ? currentDrive + "/" : currentDrive) + path.join("/"));
     let fetchSuccess: boolean = $state(true);
     let isFetching: boolean = $state(false);
 
@@ -66,11 +66,16 @@
                 input = input.replaceAll("\\", "/");
                 input = input.replaceAll("//", "/");
             }
-            const args = input.split("/");
-            currentDrive = args[0];
-            args.splice(0, 1);
-            if (args[args.length-1] == "") args.pop();
-            path = args;
+            if (input == "/"){
+                currentDrive = input;
+                path = [];
+            }else{
+                const args = input.split("/");
+                currentDrive = args[0];
+                args.splice(0, 1);
+                if (args[args.length-1] == "") args.pop();
+                path = args;
+            }
             await getDirContents();
         }
     }

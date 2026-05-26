@@ -562,7 +562,7 @@
                         {#if isSelect}
                             <input type="checkbox" name="path" value={file.name} bind:group={selectedSources.files}>
                         {/if}
-                        <a href={rootUrl+currentPath+encodeURIComponent(file.name)} target="_blank" class="w-full break-words p-2 rounded-sm flex items-center justify-between gap-2 hover:bg-accent flex-wrap">
+                        <a href={rootUrl+encodeURIComponent(currentPath) + encodeURIComponent(encodeURIComponent(file.name))} target="_blank" class="w-full break-words p-2 rounded-sm flex items-center justify-between gap-2 hover:bg-accent flex-wrap">
                             <div class="flex items-center gap-2">
                                 <FileIcon class="shrink-0"/>
                                 <span>{file.name}</span>

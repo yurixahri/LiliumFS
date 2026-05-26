@@ -97,7 +97,7 @@ void uploadStart(QWebSocket *ws, const QJsonValue &data){
 
 
         if (!is_exist){
-            emitEvent(ws, EVENTS::UPLOAD_ERROR);
+            emitEvent(ws, EVENTS::UPLOAD_ERROR, QJsonValue::Null);
             return;
         }
         QString absolute_path = path.join("/");
@@ -107,7 +107,7 @@ void uploadStart(QWebSocket *ws, const QJsonValue &data){
         struct uploadFile *file = new uploadFile();
         file->file.setFileName(absolute_path+"/"+fileName);
         if (!file->file.open(QIODevice::WriteOnly)) {
-            emitEvent(ws, EVENTS::UPLOAD_ERROR, NULL);
+            emitEvent(ws, EVENTS::UPLOAD_ERROR, QJsonValue::Null);
             delete file;
             return;
         }

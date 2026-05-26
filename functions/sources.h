@@ -72,7 +72,8 @@ QHttpServerResponse addSources(const QHttpServerRequest &request){
         }
         if (!exist){
             QString name = req_dir.toObject().value("name").toString().replace(invalid, "");
-            for (auto &dir : config.dirs){
+            if (name.isEmpty()) name = "auto_name";
+	    for (auto &dir : config.dirs){
                 if (name == dir.name){
                     name += " (duplicated)";
                     break;
@@ -114,7 +115,8 @@ QHttpServerResponse addSources(const QHttpServerRequest &request){
         }
         if (!exist){
             QString name = req_file.toObject().value("name").toString().replace(invalid, "");
-            for (auto &dir : config.dirs){
+            if (name.isEmpty()) name = "auto_name";
+	    for (auto &dir : config.dirs){
                 if (name == dir.name){
                     name += " (duplicated)";
                     break;
@@ -166,10 +168,12 @@ QHttpServerResponse changeSource(const QHttpServerRequest &request){
         return sendStatus("Expect type", QHttpServerResponder::StatusCode::BadRequest);
     }
 
-
-    QString req_name = body.value("name").toString();
+    static const QRegularExpression invalid(R"([<>:"/\\|?*\x00-\x1F])"); 
+    QString req_name = body.value("name").toString().replace(invalid, "");
     QString req_src = body.value("src").toString();
+
     // check if name is already exists in source
+    if ( req_name.isEmpty() ) return sendStatus("Name is empty", QHttpServerResponder::StatusCode::BadRequest);
     for (auto &dir : config.dirs){
         if (req_name == dir.name && req_src != dir.src){
             return sendStatus("Name already exists", QHttpServerResponder::StatusCode::BadRequest);
@@ -275,7 +279,18 @@ QHttpServerResponse getSources(){
 }
 
 QHttpServerResponse getDirectoryContents(const QUrl &url){
+    // this require to use toString() instead of path() because windows directory contains : at drive name, path() will strip that when parsing the url.
     QString path =  url.toString();
+
+    #if defined(_WIN32)
+	// nothing here
+    #elif defined(__linux__)
+	path = "/" + path;
+    #else
+        // fallback to macos or others
+	path = "/" + path;
+    #endif
+
     if (!isPathExist(path)){
         return sendStatus("Invalid path", QHttpServerResponse::StatusCode::InternalServerError);
     }
@@ -306,7 +321,7 @@ QHttpServerResponse getDrives(){
     QStringList drives = getMountedVolumes();
     QJsonArray array;
     for (auto &drive : drives){
-        while(drive.endsWith('/')) {
+        while(drive.endsWith('/') && drive.length() > 1) {
             drive.chop(1);
         }
         array.append(drive);
@@ -397,7 +412,8 @@ QHttpServerResponse addVirtualChild(const QHttpServerRequest &request){
                 if (!exist){
                     directory_t new_dir;
                     QString name = req_dir.toObject().value("name").toString().replace(invalid, "");
-                    for (auto &dir : vd.dirs){
+                    if (name.isEmpty()) name = "auto_name";
+		    for (auto &dir : vd.dirs){
                         if (name == dir.name){
                             name += " (duplicated)";
                             break;
@@ -434,7 +450,8 @@ QHttpServerResponse addVirtualChild(const QHttpServerRequest &request){
                 if (!exist){
                     file_t new_file;
                     QString name = req_file.toObject().value("name").toString().replace(invalid, "");
-                    for (auto &dir : vd.dirs){
+                    if (name.isEmpty()) name = "auto_name";  
+		    for (auto &dir : vd.dirs){
                         if (name == dir.name){
                             name += " (duplicated)";
                             break;
@@ -486,7 +503,9 @@ QHttpServerResponse changeVirtualChild(const QHttpServerRequest &request){
     // QJsonArray files = config["files"].toArray();
     for (auto &vd : config.vds){
         if (body["vd_name"].toString() == vd.name){
-            for (auto &dir : vd.dirs){
+            if ( body.value("name").toString().isEmpty() ) return sendStatus("Name is empty", QHttpServerResponder::StatusCode::BadRequest);
+
+	    for (auto &dir : vd.dirs){
                 if (body.value("name").toString() == dir.name && body.value("src").toString() != dir.src){
                     return sendStatus("Name already exists", QHttpServerResponder::StatusCode::BadRequest);
                 }
@@ -582,6 +601,8 @@ QHttpServerResponse changeVirtualDirectory(const QHttpServerRequest &request){
     QString new_name = body["new_name"].toString();
 
     if (old_name != new_name){
+        if ( new_name.isEmpty() ) return sendStatus("Name is empty", QHttpServerResponder::StatusCode::BadRequest);
+
         for (const auto &dir : config.dirs){
             if (new_name == dir.name){
                 return sendStatus("Name already exists", QHttpServerResponder::StatusCode::BadRequest);

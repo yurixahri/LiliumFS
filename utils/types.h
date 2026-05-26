@@ -109,11 +109,11 @@ inline QVariantMap vd_to_map(const vd_t &vd) {
 }
 
 inline QVariantMap dir_to_map_client(const directory_t &d) {
-    return {{"src", d.src}, {"name", d.name}, {"time", d.time}};
+    return {{"name", d.name}, {"time", d.time}};
 }
 
 inline QVariantMap file_to_map_client(const file_t &f) {
-    return {{"src", f.src}, {"name", f.name}, {"time", f.time}, {"size", f.size}};
+    return {{"name", f.name}, {"time", f.time}, {"size", f.size}};
 }
 
 inline QVariantMap account_to_map_client(const account_t &a) {
