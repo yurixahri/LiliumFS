@@ -62,8 +62,8 @@ HEADERS += \
     webSocketHelper.h
 
 
-RESOURCES += \
-    resources.qrc
+# RESOURCES += \
+#     resources.qrc
 
 win32 {
     DISTFILES += app.rc utils/openwall_crypt/x86.S

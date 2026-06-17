@@ -431,7 +431,7 @@ int main(int argc, char *argv[])
         QList<directory_t> res_dirs;
         QList<file_t> res_files;
         if (relative_path.isEmpty()){
-            // QJsonArray folders;
+            // QJsonArray dirs;
             // QJsonArray files;
             for (auto &d : config.dirs) {
                 if (canAccessSource(username, d.can_see)){
@@ -619,7 +619,7 @@ int main(int argc, char *argv[])
         }
 
         QJsonObject body = doc.object();
-        QJsonArray folders = body.value("folders").toArray();
+        QJsonArray dirs = body.value("dirs").toArray();
         QJsonArray files = body.value("files").toArray();
 
         bool is_exist = false;
@@ -662,8 +662,8 @@ int main(int argc, char *argv[])
             return sendStatus(QHttpServerResponse::StatusCode::Unauthorized);
 
         QString absolute_path = path.join("/");
-        for (const auto &folder : std::as_const(folders)){
-            if (!removeDirectory(absolute_path+"/"+folder.toString())) return sendStatus(QHttpServerResponse::StatusCode::InternalServerError);
+        for (const auto &dir : std::as_const(dirs)){
+            if (!removeDirectory(absolute_path+"/"+dir.toString())) return sendStatus(QHttpServerResponse::StatusCode::InternalServerError);
         }
 
         for (const auto &file : std::as_const(files)){
@@ -964,9 +964,9 @@ int main(int argc, char *argv[])
          * for example, if the request path is "Dir/file1.zip", first split the path into array
          * -> path = ["Dir", file1.zip"]
          * take the first element and compare with the sources alias
-         * first compare with the source folders, if the name is found in the alias then replace it with the alias src
-         * ex: if in source folders has an alias:
-         * "folders": [
+         * first compare with the source dirs, if the name is found in the alias then replace it with the alias src
+         * ex: if in source dirs has an alias:
+         * "dirs": [
                 {
                     "isHidden": false,
                     "name": "Dir",
@@ -988,10 +988,10 @@ int main(int argc, char *argv[])
             ex: after all the checking
 
             if(!is_file){
-                auto folders = getFolders(absolute_path);
+                auto dirs = getdirs(absolute_path);
                 auto files = getFiles(absolute_path);
                 if (!relative_path.isEmpty()) relative_path += "/";
-                responder.write(filesPage(*folders, *files, relative_path).toUtf8(), "text/html", QHttpServerResponder::StatusCode::Ok);
+                responder.write(filesPage(*dirs, *files, relative_path).toUtf8(), "text/html", QHttpServerResponder::StatusCode::Ok);
                 return;
             }else{
                 same as below
