@@ -17,7 +17,7 @@ Environment env;
 // QString mainPage(QString msg){
 //     json data;
 //     data["msg"] = msg.toStdString();
-//     return QString::fromStdString(env.render(env.parse_template("./views/index.html"), data));
+//     return QString::fromStdString(env.render(env.parse_template(QCoreApplication::applicationDirPath() + "/views/index.html"), data));
 // }
 
 // QString filesPage(QStringList &folders, QStringList &files, QString dir){
@@ -47,6 +47,6 @@ Environment env;
 //     QStringList back = dir.split("/");
 //     back.removeLast();
 //     data["back"] = QUrl::toPercentEncoding(back.join("/").toUtf8()).toStdString();
-//     return QString::fromStdString(env.render(env.parse_template("./views/files.html"), data));
+//     return QString::fromStdString(env.render(env.parse_template(QCoreApplication::applicationDirPath() + "/views/files.html"), data));
 // }
 #endif // HTMLTEMPLATE_H

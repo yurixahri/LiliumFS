@@ -308,7 +308,7 @@ int main(int argc, char *argv[])
         }
 
         //logNormal(path.toStdString());
-        QString root = "./client/__/admin/";
+        QString root = QCoreApplication::applicationDirPath() + "/client/__/admin/";
         if (!isPathExist(root+path)) {
             return sendStatus("This path is not exist", QHttpServerResponder::StatusCode::BadRequest);
         }
@@ -352,7 +352,7 @@ int main(int argc, char *argv[])
             path.chop(1);
         }
 
-        QString root = "./client/_app/";
+        QString root = QCoreApplication::applicationDirPath() + "/client/_app/";
         if (!isPathExist(root+path)) {
             return sendStatus("This path is not exist", QHttpServerResponder::StatusCode::BadRequest);
         }
@@ -380,7 +380,7 @@ int main(int argc, char *argv[])
             path.chop(1);
         }
 
-        QString root = "./client/";
+        QString root = QCoreApplication::applicationDirPath() + "/client/";
         if (!isPathExist(root+path)) {
             return sendStatus("This path is not exist", QHttpServerResponder::StatusCode::BadRequest);
         }
@@ -1050,7 +1050,7 @@ int main(int argc, char *argv[])
 
         QHttpHeaders headers = createHeaders(.cache = false);
         if(!is_file){
-            QString root = "./client/";
+            QString root = QCoreApplication::applicationDirPath() + "/client/";
             QFile file(root+"index.html");
             if (!file.open(QIODevice::ReadOnly)) {
                 return ;

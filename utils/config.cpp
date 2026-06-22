@@ -1,11 +1,12 @@
 #include "utils/config.h"
+#include <QCoreApplication>
 
 config_t config;
 
 
 // bool writeConfig(){
 //     QJsonDocument doc(config);
-//     QFile file("./config.json");
+//     QFile file(QCoreApplication::applicationDirPath() + "/config.json");
 //     if (!file.open(QIODevice::WriteOnly)) {
 //         qWarning() << "Couldn't open file for writing:" << file.errorString();
 //         return false;
@@ -38,7 +39,7 @@ bool writeConfig(){
     root["vds"] = vds;
 
     QJsonDocument doc = QJsonDocument::fromVariant(root);
-    QFile file("./config.json");
+    QFile file(QCoreApplication::applicationDirPath() + "/config.json");
     if (!file.open(QIODevice::WriteOnly)) return false;
     file.write(doc.toJson());
     return true;
@@ -47,7 +48,7 @@ bool writeConfig(){
 bool getConfig(){
     QReadLocker locker(&config.lock);
 
-    if (!QFile::exists("./config.json")) {
+    if (!QFile::exists(QCoreApplication::applicationDirPath() + "/config.json")) {
         logWarning("Couldn't find config file, exported default config");
         config.port = 9090;
         config.encryption_key = QtBCrypt::generateSalt();
@@ -55,7 +56,7 @@ bool getConfig(){
         return true;
     }
 
-    QFile file("./config.json");
+    QFile file(QCoreApplication::applicationDirPath() + "/config.json");
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         logError("Couldn't open file:" + file.errorString().toStdString());
         return false;

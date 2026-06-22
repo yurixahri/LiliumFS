@@ -6,7 +6,7 @@
 #include <utils/stringUtils.h>
 
 inline void writeLog(QString message) {
-    QFile logFile("./log.txt");
+    QFile logFile(QCoreApplication::applicationDirPath() + "/log.txt");
 
     if (logFile.open(QIODevice::Append | QIODevice::Text)) {
         QTextStream out(&logFile);
