@@ -47,6 +47,7 @@ A list of virtual root, each virtual root has 2 types of permissions: See and Do
 *Side note: Because i reserved /__/, /_app/, /_static/ for api, if you name your source or virtual directory like one of them, it will be skip and just call the api.*
 
 # How to build
+### Windows
 To build this project, please install msys2 and get the lasted [mingw-w64-x86_64-qt6-base](https://packages.msys2.org/packages/mingw-w64-x86_64-qt6-base) and [mingw-w64-x86_64-qt6-static](https://packages.msys2.org/packages/mingw-w64-x86_64-qt6-static), this is a static build project.
 Get the lasted [qcoro](https://github.com/qcoro/qcoro), extract it to a directory, open msys2 mingw64 terminal in the directory and run:
 ```
@@ -68,6 +69,24 @@ For frontend, all the code is in `/client`. Frontend is a Sveltekit project, it'
 liliumfs.exe
 config.json
 ```
+
+### Linux
+For Linux build, i have not yet found a good solution to build statically, what i did was compile with share lib like normal, use linuxdeployqt to grab all libs like AppImage, then copy all to this structure
+```
+/client
+/lib -> contains all libs
+LiliumFS
+config,json
+```
+Then run ```patchelf --set-rpath '$ORIGIN/lib' LiliumFS``` to change linking path of the binary. To run linuxdeployqt, first install it, then make directory with this structure
+```
+/root (any name you want)
+   | usr
+      | bin
+         | LiliumFS
+      | lib (will be create when run linuxdeployqt)
+```
+after that run ```NO_STRIP=1 ./linuxdeploy-x86_64.AppImage --appdir root --plugin qt```. Finally move all the required things the the destination, with the same structure like above.
 
 # API
 You can look at the `main.cpp` source code for the api references, it speak for itself. There is some api like `/_app/*`, it's reserved for sveltekit SPA static files (because i make backend and frontend seperately).
