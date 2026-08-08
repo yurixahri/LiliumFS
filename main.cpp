@@ -896,9 +896,16 @@ int main(int argc, char *argv[])
             QString absolute_path = path.join("/");
             QThreadPool::globalInstance()->start([shared_responder, dirs, files, absolute_path, file_name]() {
                 QHttpHeaders headers;
-                headers.append("Content-Type", "application/x-gzip");
+                QByteArray encoded_name = QUrl::toPercentEncoding(file_name + ".tar");
+                QByteArray fallback_name = file_name.toLatin1().toPercentEncoding() + ".tar";
+                QString disposition_value = QString("attachment; filename=\"%1\"; filename*=UTF-8''%2")
+                                               .arg(QString::fromLatin1(fallback_name))
+                                               .arg(QString::fromUtf8(encoded_name));
+
+
+                headers.append("Content-Type", "application/x-tar");
                 headers.append("Content-Encoding", "identity");
-                headers.append("Content-Disposition", "attachment; filename=\""+file_name+".tar\"");
+                headers.append("Content-Disposition", disposition_value.toUtf8());
 
                 // Headers must be written on the main thread too
                 QMetaObject::invokeMethod(qApp, [shared_responder, headers]() {
