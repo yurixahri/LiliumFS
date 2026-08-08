@@ -54,6 +54,12 @@ int main(int argc, char *argv[])
         return getDrives();
     });
 
+    /* Global option route for every post route*/
+    server.route("/*", QHttpServerRequest::Method::Options,
+        [](const QHttpServerRequest &) {
+        return sendStatus(QHttpServerResponse::StatusCode::Ok);
+    });
+
     server.route("/__/admin/api/getDirectoryContents/*", [](const QUrl &url, const QHttpServerRequest &request) {
         if (!request.remoteAddress().isLoopback() && !isAuthorized(request)) {
             return sendStatus("Forbidden", QHttpServerResponse::StatusCode::Forbidden);
@@ -70,11 +76,6 @@ int main(int argc, char *argv[])
         return getSources();
     });
 
-    server.route("/__/admin/api/addSources", QHttpServerRequest::Method::Options,
-        [](const QHttpServerRequest &) {
-        return sendStatus(QHttpServerResponse::StatusCode::Ok);
-        });
-
     server.route("/__/admin/api/addSources", QHttpServerRequest::Method::Post, [](const QHttpServerRequest &request) {
         if (!request.remoteAddress().isLoopback() && !isAuthorized(request)) {
             return sendStatus("Forbidden", QHttpServerResponse::StatusCode::Forbidden);
@@ -82,11 +83,6 @@ int main(int argc, char *argv[])
         
         return addSources(request);
     });
-
-    server.route("/__/admin/api/changeSource", QHttpServerRequest::Method::Options,
-        [](const QHttpServerRequest &) {
-         return sendStatus(QHttpServerResponse::StatusCode::Ok);
-        });
 
     server.route("/__/admin/api/changeSource", QHttpServerRequest::Method::Post, [](const QHttpServerRequest &request) {
         if (!request.remoteAddress().isLoopback() && !isAuthorized(request)) {
@@ -96,11 +92,6 @@ int main(int argc, char *argv[])
         return changeSource(request);
     });
 
-    server.route("/__/admin/api/deleteSource", QHttpServerRequest::Method::Options,
-        [](const QHttpServerRequest &) {
-            return sendStatus(QHttpServerResponse::StatusCode::Ok);
-        });
-
     server.route("/__/admin/api/deleteSource", QHttpServerRequest::Method::Post, [](const QHttpServerRequest &request) {
         if (!request.remoteAddress().isLoopback() && !isAuthorized(request)) {
             return sendStatus("Forbidden", QHttpServerResponse::StatusCode::Forbidden);
@@ -108,11 +99,6 @@ int main(int argc, char *argv[])
 
         return deleteSource(request);
     });
-
-    server.route("/__/admin/api/addVirtualRoot", QHttpServerRequest::Method::Options,
-                 [](const QHttpServerRequest &) {
-                     return sendStatus(QHttpServerResponse::StatusCode::Ok);
-                 });
 
     server.route("/__/admin/api/addVirtualRoot", QHttpServerRequest::Method::Post, [](const QHttpServerRequest &request) {
         if (!request.remoteAddress().isLoopback() && !isAuthorized(request)) {
@@ -122,11 +108,6 @@ int main(int argc, char *argv[])
         return addVirtualDirectory(request);
     });
 
-    server.route("/__/admin/api/changeVirtualRoot", QHttpServerRequest::Method::Options,
-                 [](const QHttpServerRequest &) {
-                     return sendStatus(QHttpServerResponse::StatusCode::Ok);
-                 });
-
     server.route("/__/admin/api/changeVirtualRoot", QHttpServerRequest::Method::Post, [](const QHttpServerRequest &request) {
         if (!request.remoteAddress().isLoopback() && !isAuthorized(request)) {
             return sendStatus("Forbidden", QHttpServerResponse::StatusCode::Forbidden);
@@ -134,11 +115,6 @@ int main(int argc, char *argv[])
 
         return changeVirtualDirectory(request);
     });
-
-    server.route("/__/admin/api/deleteVirtualRoot", QHttpServerRequest::Method::Options,
-                 [](const QHttpServerRequest &) {
-                     return sendStatus(QHttpServerResponse::StatusCode::Ok);
-                 });
 
     server.route("/__/admin/api/deleteVirtualRoot", QHttpServerRequest::Method::Post, [](const QHttpServerRequest &request) {
         if (!request.remoteAddress().isLoopback() && !isAuthorized(request)) {
@@ -148,11 +124,6 @@ int main(int argc, char *argv[])
         return deleteVirtualDirectory(request);
     });
 
-    server.route("/__/admin/api/addVirtualChild", QHttpServerRequest::Method::Options,
-                 [](const QHttpServerRequest &) {
-                     return sendStatus(QHttpServerResponse::StatusCode::Ok);
-                 });
-
     server.route("/__/admin/api/addVirtualChild", QHttpServerRequest::Method::Post, [](const QHttpServerRequest &request) {
         if (!request.remoteAddress().isLoopback() && !isAuthorized(request)) {
             return sendStatus("Forbidden", QHttpServerResponse::StatusCode::Forbidden);
@@ -161,11 +132,6 @@ int main(int argc, char *argv[])
         return addVirtualChild(request);
     });
 
-    server.route("/__/admin/api/changeVirtualChild", QHttpServerRequest::Method::Options,
-                 [](const QHttpServerRequest &) {
-                     return sendStatus(QHttpServerResponse::StatusCode::Ok);
-                 });
-
     server.route("/__/admin/api/changeVirtualChild", QHttpServerRequest::Method::Post, [](const QHttpServerRequest &request) {
         if (!request.remoteAddress().isLoopback() && !isAuthorized(request)) {
             return sendStatus("Forbidden", QHttpServerResponse::StatusCode::Forbidden);
@@ -173,11 +139,6 @@ int main(int argc, char *argv[])
 
         return changeVirtualChild(request);
     });
-
-    server.route("/__/admin/api/deleteVirtualChild", QHttpServerRequest::Method::Options,
-                 [](const QHttpServerRequest &) {
-                     return sendStatus(QHttpServerResponse::StatusCode::Ok);
-                 });
 
     server.route("/__/admin/api/deleteVirtualChild", QHttpServerRequest::Method::Post, [](const QHttpServerRequest &request) {
         if (!request.remoteAddress().isLoopback() && !isAuthorized(request)) {
@@ -202,11 +163,6 @@ int main(int argc, char *argv[])
         response.setHeaders(createHeaders(.cache = false));
         return response;
     });
-
-    server.route("/__/admin/api/changeSettings", QHttpServerRequest::Method::Options,
-                 [](const QHttpServerRequest &) {
-                     return sendStatus(QHttpServerResponse::StatusCode::Ok);
-                 });
 
     server.route("/__/admin/api/changeSettings", QHttpServerRequest::Method::Post, [&tcpServer, &server](const QHttpServerRequest &request) {
         if (!request.remoteAddress().isLoopback() && !isAuthorized(request)) {
@@ -245,11 +201,6 @@ int main(int argc, char *argv[])
         return getAccounts();
     });
 
-    server.route("/__/admin/api/addAccount", QHttpServerRequest::Method::Options,
-                 [](const QHttpServerRequest &) {
-                     return sendStatus(QHttpServerResponse::StatusCode::Ok);
-                 });
-
     server.route("/__/admin/api/addAccount", QHttpServerRequest::Method::Post, [](const QHttpServerRequest &request) {
         if (!request.remoteAddress().isLoopback() && !isAuthorized(request)) {
             return sendStatus("Forbidden", QHttpServerResponse::StatusCode::Forbidden);
@@ -258,11 +209,6 @@ int main(int argc, char *argv[])
         return addAccount(request);
     });
 
-    server.route("/__/admin/api/deleteAccount", QHttpServerRequest::Method::Options,
-                 [](const QHttpServerRequest &) {
-                     return sendStatus(QHttpServerResponse::StatusCode::Ok);
-                 });
-
     server.route("/__/admin/api/deleteAccount", QHttpServerRequest::Method::Post, [](const QHttpServerRequest &request) {
         if (!request.remoteAddress().isLoopback() && !isAuthorized(request)) {
             return sendStatus("Forbidden", QHttpServerResponse::StatusCode::Forbidden);
@@ -270,11 +216,6 @@ int main(int argc, char *argv[])
 
         return deleteAccount(request);
     });
-
-    server.route("/__/admin/api/changeAccount", QHttpServerRequest::Method::Options,
-                 [](const QHttpServerRequest &) {
-                     return sendStatus(QHttpServerResponse::StatusCode::Ok);
-                 });
 
     server.route("/__/admin/api/changeAccount", QHttpServerRequest::Method::Post, [](const QHttpServerRequest &request) {
         if (!request.remoteAddress().isLoopback() && !isAuthorized(request)) {
@@ -594,11 +535,6 @@ int main(int argc, char *argv[])
         return response;
     });
 
-    server.route("/__/api/deleteSources", QHttpServerRequest::Method::Options,
-                 [](const QHttpServerRequest &) {
-                     return sendStatus(QHttpServerResponse::StatusCode::Ok);
-                 });
-
     server.route("/__/api/deleteSources", QHttpServerRequest::Method::Post, [](const QHttpServerRequest &request) {
         QReadLocker locker(&config.lock);
 
@@ -672,11 +608,6 @@ int main(int argc, char *argv[])
 
         return sendStatus(QHttpServerResponse::StatusCode::Ok);
     });
-
-    server.route("/__/api/makeDirectory", QHttpServerRequest::Method::Options,
-                 [](const QHttpServerRequest &) {
-                     return sendStatus(QHttpServerResponse::StatusCode::Ok);
-                 });
 
     server.route("/__/api/makeDirectory", QHttpServerRequest::Method::Post, [](const QHttpServerRequest &request) {
         QReadLocker locker(&config.lock);
@@ -791,7 +722,6 @@ int main(int argc, char *argv[])
         return sendStatus(username, QHttpServerResponse::StatusCode::Ok);
     });
 
-
     server.route("/__/api/logout", []() {
         QHttpHeaders headers = createHeaders();
         headers.append(QHttpHeaders::WellKnownHeader::SetCookie, clearAuth());
@@ -799,11 +729,6 @@ int main(int argc, char *argv[])
         response.setHeaders(headers);
         return response;
     });
-
-    server.route("/__/api/login", QHttpServerRequest::Method::Options,
-                 [](const QHttpServerRequest &) {
-                     return sendStatus(QHttpServerResponse::StatusCode::Ok);
-                 });
 
     server.route("/__/api/login", QHttpServerRequest::Method::Post, [](const QHttpServerRequest &request) {
         QJsonDocument doc;
@@ -826,11 +751,6 @@ int main(int argc, char *argv[])
             return sendStatus(QHttpServerResponse::StatusCode::Unauthorized);
         }
     });
-
-    server.route("/__/api/zip", QHttpServerRequest::Method::Options,
-                 [](const QHttpServerRequest &) {
-                     return sendStatus(QHttpServerResponse::StatusCode::Ok);
-                 });
 
     server.route("/__/api/zip", QHttpServerRequest::Method::Post, [](const QHttpServerRequest &request, QHttpServerResponder &responder) {
         QReadLocker locker(&config.lock);
@@ -951,7 +871,6 @@ int main(int argc, char *argv[])
         }
         //logNormal(relative_path.toStdString());
         QStringList path = relative_path.split("/");
-
 
         QString username = "";
         auto id = getAuthCookie(request);
@@ -1112,7 +1031,6 @@ int main(int argc, char *argv[])
             file->seek(start);
             //QByteArray data = file->read(contentLength);
 
-
             QMimeType mimeType = getMimeType(path.join("/"));
 
             auto status = (start > 0)   ? QHttpServerResponder::StatusCode::PartialContent
@@ -1136,8 +1054,6 @@ int main(int argc, char *argv[])
             responder.write(file, headers, status);
         }
     });
-
-
 
     server.addWebSocketUpgradeVerifier(&server, [](const QHttpServerRequest &request) {
         if (request.url().path() == "/__/ws") {
@@ -1229,8 +1145,6 @@ int main(int argc, char *argv[])
             ws->deleteLater();
         });
     });
-
-
 
     if (!tcpStart(tcpServer, server, port)) return -1;
     // quint16 port = tcpServer->serverPort();
