@@ -95,34 +95,54 @@ You can look at the `main.cpp` source code for the api references, it speak for 
 For reverse proxy like nginx, use this config:
 ```
 server {
-        listen       443 ssl;
-        listen [::]:443 ssl;
-        server_name server.yurixahri.net;
+	listen       443 ssl;
+	listen [::]:443 ssl;
+	server_name your.domain.com;
 
-		ssl_protocols TLSv1.2 TLSv1.3;
-        ssl_certificate      /your/fullchain.pem;
-        ssl_certificate_key  /your/privkey.pem;
+	ssl_protocols TLSv1.2 TLSv1.3;
+	ssl_certificate      /your/fullchain.pem;
+	ssl_certificate_key  /your/privkey.pem;
+	
+	location /__/ws {
+		proxy_http_version 1.1;
+		proxy_set_header Upgrade $http_upgrade;
+		proxy_set_header Connection "upgrade";
 		
-        location / {
-			proxy_http_version 1.1;
-			proxy_set_header Upgrade $http_upgrade;
-    		proxy_set_header Connection "upgrade";
-			proxy_set_header Host $host;
-			proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-			proxy_set_header X-Forwarded-Proto $scheme;	
-			proxy_buffering off;
-			proxy_request_buffering off;
-			proxy_cache off;
-			gzip off;
-			chunked_transfer_encoding on;
-			proxy_read_timeout 24h;
-			proxy_send_timeout 24h;
-			send_timeout 24h;
+		proxy_set_header Host $host;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header X-Forwarded-Proto $scheme;	
+		
+		proxy_buffering off;
+		proxy_read_timeout 3600s;
+		proxy_send_timeout 3600s;
+		client_max_body_size 0;
+		
+		proxy_pass http://[::1]:441; # or ipv4
+	}
 
-			client_max_body_size 0;
-			proxy_max_temp_file_size 0;
-			proxy_pass https://localhost:{your program port};
-        }
+	location / {
+		proxy_http_version 1.1;
+		proxy_set_header Upgrade "";
+		proxy_set_header Connection "keep-alive";
+		proxy_set_header Host $host;
+		
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header X-Forwarded-Proto $scheme;	
+		proxy_buffering off;
+		proxy_request_buffering off;
+		proxy_cache off;
+		gzip off;
+		chunked_transfer_encoding on;
+		proxy_read_timeout 3600s;
+		proxy_send_timeout 3600s;
+		send_timeout 3600s;
+		keepalive_timeout 3600s; # Keep the underlying TCP pipe alive
+
+		client_max_body_size 0;
+		proxy_max_temp_file_size 0;
+
+		proxy_pass http://[::1]:441;
+	}
 }
 ```
 
