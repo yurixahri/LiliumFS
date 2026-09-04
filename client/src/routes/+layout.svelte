@@ -16,7 +16,7 @@
 			document.head.appendChild(link);
 		}
 
-		link.href = `/colors.css?v=${Date.now()}`;
+		link.href = `${PUBLIC_staticURL}colors.css?v=${Date.now()}`;
 	});
 	let { children } = $props();
 	
