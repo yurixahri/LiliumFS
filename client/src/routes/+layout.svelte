@@ -1,14 +1,29 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import '../app.css';
+	import { PUBLIC_staticURL } from '$env/static/public';
 	//import favicon from '$lib/assets/favicon.svg';
 
-	document.documentElement.style.setProperty('--bg-image', `url("/_static/koharu.jpg")`);
+	document.documentElement.style.setProperty('--bg-image', `url("${PUBLIC_staticURL}background.jpg")`);
+	
+	onMount(() => {
+		let link = document.querySelector<HTMLLinkElement>('#runtime-colors');
+		
+		if (!link) {
+			link = document.createElement('link');
+			link.id = 'runtime-colors';
+			link.rel = 'stylesheet';
+			document.head.appendChild(link);
+		}
+
+		link.href = `/colors.css?v=${Date.now()}`;
+	});
 	let { children } = $props();
 	
 </script>
 
 <svelte:head>
-	<link rel="icon" href="/_static/icon-100.png" />
+	<link rel="icon" href="{PUBLIC_staticURL}icon-100.png" />
 </svelte:head>
 
 <div class="bg">

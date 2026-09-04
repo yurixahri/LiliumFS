@@ -1,0 +1,63 @@
+:root {
+  /* Base */
+  --radius: 0.625rem;
+
+  --background: #1E1A21; /* editor.background */
+  --foreground: #E6DEE8; /* editor.foreground */
+
+  /* Surfaces */
+  --card: #1A161D; /* sidebar background */
+  --card-foreground: #E6DEE8;
+  --popover: #423a46; /* tab.inactiveBackground */
+  --popover-foreground: #E6DEE8;
+
+  /* Primary colors */
+  --primary: #C69FE2; /* highlight/purple accent */
+  --primary-foreground: #1E1A21;
+
+  /* Secondary colors */
+  --secondary: #39323e; /* pink accent */
+  --secondary-foreground: #E6DEE8;
+
+  /* Muted/Neutral */
+  --muted: #2A202C; /* selection background */
+  --muted-foreground: #80748e; /* line numbers */
+
+  /* Accent */
+  --accent: #1E1A21; /* bracket highlight bg */
+  --accent-foreground: #E6DEE8;
+
+  /* Destructive / Error */
+  --destructive: #F28BB2; /* invalid background */
+  --destructive-foreground: #1E1A21;
+
+  /* Border / Input */
+  --border: #4c4650;
+  --input: #3E3445;
+  --ring: #947993; /* active indent guide */
+
+  /* Sidebar */
+  --sidebar: #1a161db6;
+  --sidebar-foreground: #E6DEE8;
+  --sidebar-primary: #C69FE2;
+  --sidebar-primary-foreground: #1E1A21;
+  --sidebar-accent: #2A202C;
+  --sidebar-accent-foreground: #E6DEE8;
+  --sidebar-border: #3E3445;
+  --sidebar-ring: #6C5E7C;
+
+  /* Charts (derived from theme palette) */
+  --chart-1: #C69FE2; /* purple */
+  --chart-2: #F28BB2; /* pink */
+  --chart-3: #6C5E7C; /* muted lavender */
+  --chart-4: #8E5BA6; /* lilac accent */
+  --chart-5: #3E2F48; /* deep background */
+
+  /* Syntax accent mapping (optional use for UI highlights) */
+  --syntax-tag: #F28BB2;
+  --syntax-attribute: #C69FE2;
+  --syntax-string: #F7A7C4;
+  --syntax-comment: #6C5E7C;
+  --syntax-number: #C69FE2;
+  --syntax-function: #F28BB2;
+}

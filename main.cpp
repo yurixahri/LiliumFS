@@ -1150,7 +1150,7 @@ int main(int argc, char *argv[])
     // quint16 port = tcpServer->serverPort();
     //tcpServer.release();
     checkSessions();
-    QString version = "0.1.3";
+    QString version = "0.1.3.2";
     logNormal("LiliumFS version "+version.toStdString());
     logNormal("Main page: http://localhost:"+QString::number(port).toStdString()+"/");
     logNormal("Admin page: http://localhost:"+QString::number(port).toStdString()+"/__/admin/");

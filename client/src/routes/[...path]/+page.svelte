@@ -434,7 +434,7 @@
 
 <!-- user panel -->
 <Dialog.Root bind:open={isOpenUser}>
-    <Dialog.Content class="">
+    <Dialog.Content class="" onkeydown={async (e)=>{ if (!isLogin && e.key === "Enter") await login();}}>
         <Dialog.Header>
             {#if isLogin}
                 <Dialog.Title>Welcome, {username}</Dialog.Title>
@@ -447,7 +447,7 @@
             <div class="flex gap-2">
                 <Button variant="ghost" onclick={async ()=>{ await logout()}}>Logout</Button>
                 {#if isAdmin}
-                    <Button variant="secondary" onclick={()=>{goto("/__/admin/")}}>Admin panel</Button>
+                    <Button variant="secondary" onclick={()=>{window.open("/__/admin/", '_blank', 'noopener,noreferrer')}}>Admin panel</Button>
                 {/if}
             </div>
         {:else}
