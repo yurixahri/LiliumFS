@@ -146,6 +146,9 @@ server {
 }
 ```
 
+# Customize UI
+Right now customization is limited to colors, you can change it at ```client/colors.css```, the file will override tailwind runtime variables, you can also remove the background by delete ```client/background.jpg```. If you want to custom your own style, i suggest clone the project and design yourself at ```project/client```, since frontend is svelte kit, it will be easy to write it yourself.
+
 # Final thought
 This is a small project, mostly just for fun but its features are still helpful and easy to use. In the backend code i keep most config data in QJsonObject, so you may see huge nested loop just to modify a single json object. For the frontend, as i mentioned in the source code, if you want simplicity you can just modify endpoint for traditional MVC style (with inja), or htmx.
 
