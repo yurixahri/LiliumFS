@@ -10,9 +10,10 @@
 	import Input from "$lib/components/ui/input/input.svelte";
 	import Alert from "$lib/customComponents/Alert.svelte";
     import * as Breadcrumb from "$lib/components/ui/breadcrumb/index.js";
-	import { toast, Toaster } from "svelte-sonner";
+	import * as Tooltip from "$lib/components/ui/tooltip/index.js";
+    import { toast, Toaster } from "svelte-sonner";
     import { authenticate, authorize, getInfo } from "$lib/auth/info";
-	import { goto } from "$app/navigation";
+	
 
     let currentPath = $derived($page.url.pathname.replace("/", ""));
     let breadcrumb = $derived(currentPath.split("/").slice(0, currentPath.split("/").length-1))
@@ -502,10 +503,20 @@
                 {/if}
             {/if}
             {#if currentSources.can_download}
-                <Button variant="secondary" onclick={openZip} class="transition-all">
-                    <Package/>
-                    <span class="hidden sm:inline">Tar.gz</span>
-                </Button>
+                <Tooltip.Provider>
+                <Tooltip.Root>
+                    <Tooltip.Trigger>
+                        <Button variant="secondary" onclick={openZip} class="transition-all">
+                            <Package/>
+                            <span class="hidden sm:inline">Tar.gz</span>
+                        </Button>
+                    </Tooltip.Trigger>
+                    <Tooltip.Content>
+                        <p>Pack selected or entire directory into tar, then download.</p>
+                    </Tooltip.Content>
+                </Tooltip.Root>
+                </Tooltip.Provider>
+                
             {/if}
         </div>
     
