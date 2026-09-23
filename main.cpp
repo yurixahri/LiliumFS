@@ -760,6 +760,7 @@ int main(int argc, char *argv[])
         QJsonDocument doc;
 
         if (auto isInvalid = parseBody(doc, data)){
+            responder.write("Bad request", "text/plain", QHttpServerResponder::StatusCode::BadRequest);
             return;
         }
 
@@ -812,50 +813,87 @@ int main(int argc, char *argv[])
         }
 
         if (can_download){
-            auto shared_responder = std::make_shared<QHttpServerResponder>(std::move(responder));
             QString absolute_path = path.join("/");
-            QThreadPool::globalInstance()->start([shared_responder, dirs, files, absolute_path, file_name]() {
-                QHttpHeaders headers;
-                QByteArray encoded_name = QUrl::toPercentEncoding(file_name + ".tar");
-                QByteArray fallback_name = file_name.toLatin1().toPercentEncoding() + ".tar";
-                QString disposition_value = QString("attachment; filename=\"%1\"; filename*=UTF-8''%2")
-                                               .arg(QString::fromLatin1(fallback_name))
-                                               .arg(QString::fromUtf8(encoded_name));
 
+            QHttpHeaders headers;
+            QByteArray encoded_name = QUrl::toPercentEncoding(file_name + ".tar");
+            QByteArray fallback_name = file_name.toLatin1().toPercentEncoding() + ".tar";
+            QString disposition_value = QString( "attachment; filename=\"%1\"; filename*=UTF-8''%2" ) .arg(QString::fromLatin1(fallback_name)) .arg(QString::fromUtf8(encoded_name));
+            headers.append( "Content-Type", "application/x-tar" );
+            headers.append( "Content-Encoding", "identity" );
+            headers.append( "Content-Disposition", disposition_value.toUtf8() );
 
-                headers.append("Content-Type", "application/x-tar");
-                headers.append("Content-Encoding", "identity");
-                headers.append("Content-Disposition", disposition_value.toUtf8());
+            auto *stream = new tar_stream;
+            // keep state independently alive for the worker.
+            auto state = stream->state;
+            responder.write( stream, headers, QHttpServerResponder::StatusCode::Ok );
 
-                // Headers must be written on the main thread too
-                QMetaObject::invokeMethod(qApp, [shared_responder, headers]() {
-                    shared_responder->writeBeginChunked(headers, QHttpServerResponder::StatusCode::Ok);
-                }, Qt::BlockingQueuedConnection);
+            QThreadPool::globalInstance()->start( [state, dirs, files, absolute_path]() {
 
-                archive* a = archive_write_new();
-                // archive_write_add_filter_gzip(a);
-                archive_write_set_format_pax_restricted(a);
-                archive_write_set_options(a, "no-null");
-                archive_write_set_bytes_in_last_block(a, 1);
-                archive_write_open(a, (void*)&shared_responder, nullptr, archiveWriteCallback, nullptr);
+                archive *archive_file = archive_write_new();
 
-                for (auto const &dir : dirs){
-                    if(addArchiveEntry(a, dir.toString(), absolute_path+"/"+dir.toString()) == ARCHIVE_FATAL) break;
-                }
-                for (auto const &file : files){
-                    if(addArchiveEntry(a, file.toString(), absolute_path+"/"+file.toString()) == ARCHIVE_FATAL) break;
+                if (!archive_file) {
+                    QMutexLocker locker(&state->mutex);
+                    state->finished = true;
+                    state->can_write.wakeAll();
+                    return;
                 }
 
-                archive_write_close(a);
-                archive_write_free(a);
+                archive_write_set_format_pax_restricted( archive_file );
+                archive_write_set_options( archive_file, "no-null" );
+                archive_write_set_bytes_in_last_block( archive_file, 1 );
 
-                // Finalize on main thread
-                QMetaObject::invokeMethod(qApp, [shared_responder]() {
-                    if (!shared_responder->isResponseCanceled()) {
-                        shared_responder->writeEndChunked(" ");
+                tar_archive_context context;
+                context.state = state;
+
+                if (archive_write_open( archive_file, &context, nullptr, archiveWriteCallback, nullptr ) != ARCHIVE_OK) {
+                    archive_write_free(archive_file);
+                    QMutexLocker locker(&state->mutex);
+                    state->finished = true;
+                    state->can_write.wakeAll();
+                    return;
+                }
+
+                bool archive_ok = true;
+
+                for (const auto &dir : dirs) {
+                    if (addArchiveEntry( archive_file, dir.toString(), absolute_path + "/" + dir.toString() ) == ARCHIVE_FATAL) {
+                        archive_ok = false;
+                        break;
                     }
-                }, Qt::BlockingQueuedConnection);
+                }
+
+                if (archive_ok) {
+                    for (const auto &file : files) {
+                        if (addArchiveEntry( archive_file, file.toString(), absolute_path + "/" + file.toString() ) == ARCHIVE_FATAL) {
+                            archive_ok = false;
+                            break;
+                        }
+                    }
+                }
+
+                archive_write_close(archive_file);
+                archive_write_free(archive_file);
+
+                bool canceled = false;
+
+                QMutexLocker locker(&state->mutex);
+                canceled = state->canceled;
+                state->finished = true;
+                state->can_write.wakeAll();
+
+                if (!canceled) {
+                    QMetaObject::invokeMethod( qApp, [state]() {
+                            if (state->stream) emit state->stream->readChannelFinished();
+                        },
+                        Qt::QueuedConnection
+                    );
+                }
             });
+            return;
+        }else{
+            responder.write("Forbidden", "text/plain", QHttpServerResponder::StatusCode::Forbidden);
+            return;
         }
     });
 
@@ -1150,7 +1188,7 @@ int main(int argc, char *argv[])
     // quint16 port = tcpServer->serverPort();
     //tcpServer.release();
     checkSessions();
-    QString version = "0.1.3.2";
+    QString version = "0.1.3.3";
     logNormal("LiliumFS version "+version.toStdString());
     logNormal("Main page: http://localhost:"+QString::number(port).toStdString()+"/");
     logNormal("Admin page: http://localhost:"+QString::number(port).toStdString()+"/__/admin/");
